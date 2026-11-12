@@ -7,7 +7,7 @@
 A live terminal that watches the wallets of 92 trusted memecoin KOLs and shows every buy and sell as it happens.
 When a KOL buys, the funky town fish dances. No buys, the fish waits.
 
-**[Open FihRadar](https://0xf4ith.github.io/fihradar/)** · **[Watch the trailer](docs/trailer.mp4)** · **[Download](https://github.com/0xF4ith/fihradar/archive/refs/heads/main.zip)**
+**[Download](https://github.com/0xF4ith/fihradar/archive/refs/heads/main.zip)** · **[Watch the trailer](docs/trailer.mp4)**
 
 ![FihRadar terminal](docs/hero.jpg)
 
@@ -27,12 +27,9 @@ When a KOL buys, the funky town fish dances. No buys, the fish waits.
 
 ## How to use it
 
-**Option 1: open the website**
-Go to **https://0xf4ith.github.io/fihradar/**. It connects by itself. Wait for the green `LIVE · ON-CHAIN` badge in the top right.
-
-**Option 2: run it from your computer**
 1. Click the green **Code** button, then **Download ZIP**, and unzip it.
 2. Double-click `index.html`. Keep `fish.mp4` in the same folder.
+3. It connects by itself. Wait for the green `LIVE · ON-CHAIN` badge in the top right.
 
 That's it. No account, no install, no subscription.
 
