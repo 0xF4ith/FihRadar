@@ -1,0 +1,982 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FihRadar · watch everyone's favourite trader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#E6FBFF;--dim:#9CC4D1;--faint:#7FA8B6;--line:rgba(120,230,255,.20);--line2:rgba(120,230,255,.10);
+  --panel:rgba(3,28,40,.58);--panel-solid:rgba(6,44,60,.75);--chip:rgba(120,230,255,.08);
+  --acc:#4FE3FF;--acc-text:#7FEBFF;--glow:0 0 18px rgba(79,227,255,.55);
+  --head:"Bebas Neue","Oswald",Impact,"Arial Narrow",sans-serif;--cond:"Barlow Condensed","Arial Narrow",ui-sans-serif,sans-serif;
+  --gold:#E8C35A;--gold-2:#B8902E;--gold-bg:linear-gradient(145deg,rgba(232,195,90,.20),rgba(184,144,46,.08));
+  --buy:#5CF2B0;--buy-bg:rgba(92,242,176,.14);--sell:#FF8A98;--sell-bg:rgba(255,138,152,.14);--call:#FFC46B;--call-bg:rgba(255,196,107,.14);
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;color:var(--ink);font:16px/1.45 var(--cond);
+  background:radial-gradient(120% 80% at 50% -10%,#1C7E93 0%,#0C4A5E 28%,#06283A 58%,#02121C 100%) fixed}
+/* ocean layers: light rays, bubbles, depth gauge, vignette */
+.sea{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.ray{position:absolute;top:-20%;width:16vw;height:130%;background:linear-gradient(180deg,rgba(180,245,255,.22),rgba(180,245,255,.05) 55%,transparent 80%);
+  transform-origin:top center;filter:blur(6px);animation:sway 14s ease-in-out infinite alternate;mix-blend-mode:screen}
+@keyframes sway{from{transform:rotate(var(--r)) translateX(-2vw)}to{transform:rotate(calc(var(--r) + 5deg)) translateX(2vw)}}
+.bub{position:absolute;bottom:-30px;border-radius:50%;border:1px solid rgba(200,250,255,.5);background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.55),rgba(160,240,255,.08) 60%);animation:rise linear infinite}
+@keyframes rise{from{transform:translate(0,0)}50%{transform:translate(14px,-55vh)}to{transform:translate(-6px,-115vh);opacity:0}}
+.vign{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,8,14,.65) 100%)}
+.gauge{position:absolute;right:6px;top:70px;bottom:20px;width:34px;border-left:1px solid rgba(120,230,255,.25)}
+.gauge i{position:absolute;left:0;height:1px;background:rgba(120,230,255,.4)}
+.gauge span{position:absolute;left:12px;font:11px/1 var(--mono);color:rgba(156,196,209,.7);transform:translateY(-50%)}
+.gauge .mk{position:absolute;left:-5px;width:9px;height:9px;border-radius:50%;background:var(--acc);box-shadow:var(--glow);transition:top 1.2s ease}
+button,input,select{font:inherit;color:inherit}
+a{color:var(--ink);text-decoration:underline;text-underline-offset:3px}a:hover{color:var(--acc-text)}
+.mono{font-family:var(--mono)}
+.lbl{font-family:var(--cond);font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:600}
+#app{position:relative;z-index:1;height:100vh;display:grid;grid-template-rows:auto auto minmax(0,1fr);gap:12px;padding:12px 54px 14px 16px}
+.bar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px}
+.navl,.navr{display:flex;gap:7px;flex-wrap:nowrap;align-items:center;min-width:0}.navr{justify-content:flex-end}
+.brand{display:flex;flex-direction:column;align-items:center;line-height:1}
+.brand .tag{font-family:var(--cond);font-size:13px;letter-spacing:.32em;text-transform:uppercase;color:var(--acc-text);text-shadow:var(--glow)}
+.brand b{font-family:var(--head);font-weight:400;font-size:48px;letter-spacing:.06em;color:#DFFBFF;text-shadow:0 0 6px rgba(150,240,255,.9),0 0 22px rgba(79,227,255,.7),0 0 48px rgba(79,227,255,.35)}
+.brand svg{filter:drop-shadow(0 0 8px rgba(79,227,255,.9));margin-bottom:6px}
+@keyframes blink{50%{opacity:.35}}
+.btn{height:40px;padding:0 13px;border-radius:8px;border:1px solid var(--line);background:var(--panel-solid);cursor:pointer;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font-family:var(--cond);font-weight:700;font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);backdrop-filter:blur(6px)}
+.btn:hover{border-color:rgba(120,230,255,.55);box-shadow:var(--glow)}
+.btn.dark{background:rgba(79,227,255,.92);border-color:#9AF2FF;color:#03202C;box-shadow:var(--glow)}
+.btn.dark:hover{background:#B5F6FF}
+select{height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel-solid);padding:0 8px;max-width:200px;font-family:var(--cond);font-weight:700;font-size:16px;color:var(--ink)}
+option{background:#062B3B;color:#E6FBFF}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.demo.live{border:1px solid rgba(70,255,170,.8);color:#7CFFC4;background:rgba(70,255,170,.1);box-shadow:0 0 14px rgba(70,255,170,.35)}
+.demo.live::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:#7CFFC4;margin-right:7px;vertical-align:1px;animation:halo 1.6s ease-in-out infinite}
+body.islive .sim{display:none}
+.plat.dex{color:#BFEAFF}
+.livest{font-family:var(--mono);font-size:13px;padding:10px 12px;border-radius:8px;background:rgba(2,20,30,.6);border:1px solid var(--line);white-space:pre-wrap}
+.demo{cursor:pointer;font-family:var(--cond);font-size:14px;font-weight:700;letter-spacing:.12em;padding:8px 10px;border-radius:8px;border:1px dashed rgba(255,196,107,.7);color:var(--call);background:rgba(255,196,107,.08)}
+.strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-width:0;backdrop-filter:blur(8px);box-shadow:inset 0 1px 0 rgba(160,240,255,.12)}
+.kpi .v{font-family:var(--head);font-weight:400;font-size:34px;letter-spacing:.03em;text-shadow:0 0 14px rgba(79,227,255,.25);line-height:1.15;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .s{font-size:13px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grid{display:grid;grid-template-columns:minmax(320px,25%) minmax(0,1fr) minmax(320px,26%);gap:12px;min-height:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;min-height:0;overflow:hidden;backdrop-filter:blur(10px);box-shadow:inset 0 1px 0 rgba(160,240,255,.14),0 14px 40px rgba(0,10,18,.45)}
+.ph{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 14px;border-bottom:1px solid var(--line2);flex:none}
+.col{display:flex;flex-direction:column;gap:12px;min-height:0}
+.scroll{overflow:auto;min-height:0;flex:1}
+.scroll::-webkit-scrollbar{width:9px}.scroll::-webkit-scrollbar-thumb{background:rgba(120,230,255,.25);border-radius:5px}
+.pins{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px;flex:none}
+.pin{position:relative;background:var(--gold-bg);border:1px solid var(--gold-2);border-radius:12px;padding:9px 10px;cursor:pointer;text-align:left;display:grid;grid-template-columns:30px minmax(0,1fr);gap:5px 8px;align-items:center;box-shadow:0 0 0 1px rgba(232,195,90,.12) inset,0 6px 18px rgba(232,195,90,.08)}
+.pin:hover{border-color:var(--gold)}
+.pin .nm{color:var(--gold);padding-right:22px}
+.pin .v{grid-column:1/-1;display:flex;justify-content:space-between;gap:6px;font-family:var(--mono);font-size:13px;color:var(--dim)}
+.fishmark{position:absolute;top:6px;right:7px;width:22px;height:14px;color:#fff;opacity:.95;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
+.av{width:34px;height:34px;border-radius:50%;overflow:hidden;display:grid;place-items:center;font-size:11px;font-weight:800;color:#03202C;border:1px solid rgba(120,230,255,.35);box-shadow:0 0 10px rgba(79,227,255,.25);flex:none;font-family:var(--mono)}
+.nm{font-weight:700;font-size:17px;letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hd{font-size:13px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pos{color:var(--buy)}.neg{color:var(--sell)}
+.tools{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line2);border-bottom:1px solid var(--line2);flex:none}
+.tools input,.tools select{flex:1;min-width:0;height:42px;border-radius:8px;border:1px solid var(--line);background:rgba(2,20,30,.6);padding:0 11px;font-family:var(--cond);font-weight:600;font-size:16px;color:var(--ink)}
+.tools input::placeholder{color:var(--faint)}
+.row{display:grid;grid-template-columns:34px 30px minmax(0,1fr) auto;gap:9px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line2);cursor:pointer;width:100%;text-align:left;background:none}
+.row:hover{background:rgba(120,230,255,.06)}
+.row.pinrow .nm{color:var(--gold)}
+.star{width:34px;height:34px;border-radius:8px;border:1px solid transparent;background:none;cursor:pointer;color:#6E7482;display:grid;place-items:center}
+.star.on{color:var(--gold)}
+.star:hover{border-color:var(--line)}
+.tier{font-family:var(--mono);font-size:11px;font-weight:700;padding:1px 6px;border-radius:5px;background:var(--chip);color:var(--dim);margin-left:6px}
+.num{font-family:var(--mono);font-weight:700;font-variant-numeric:tabular-nums}
+.filters{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{height:34px;padding:0 11px;border-radius:17px;border:1px solid var(--line);background:var(--panel-solid);cursor:pointer;font-family:var(--cond);font-size:14px;font-weight:700;letter-spacing:.1em;color:var(--dim)}
+.chip.on{background:rgba(79,227,255,.18);border-color:rgba(120,230,255,.7);color:#DFFBFF;box-shadow:0 0 12px rgba(79,227,255,.35)}
+.ev{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:11px;padding:10px 14px;border-bottom:1px solid var(--line2);align-items:center;width:100%;text-align:left;background:none;border-left:3px solid transparent}
+button.ev{cursor:pointer;border-top:0;border-right:0}
+button.ev:hover{background:rgba(120,230,255,.07)}
+button.ev:hover .copyhint{opacity:1}
+.ev.newbuy{animation:flash 1.4s ease-out}
+@keyframes flash{from{background:rgba(75,214,138,.16)}to{background:transparent}}
+.ev.goldcall{background:linear-gradient(90deg,rgba(232,195,90,.16),rgba(232,195,90,.03) 70%);border-left-color:var(--gold)}
+.ev.goldcall .act.call{background:var(--gold);color:#17191D}
+.ev .l1{display:flex;flex-wrap:wrap;gap:7px;align-items:center;min-width:0}
+.act{font-family:var(--mono);font-size:11px;font-weight:800;padding:2px 7px;border-radius:5px;letter-spacing:.06em}
+.act.buy{background:var(--buy-bg);color:var(--buy)}.act.sell{background:var(--sell-bg);color:var(--sell)}.act.call{background:var(--call-bg);color:var(--call)}
+.plat{font-family:var(--mono);font-size:11px;font-weight:700;padding:1px 7px;border-radius:5px;border:1px solid var(--line);color:var(--dim);letter-spacing:.05em}
+.sim{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--faint);border:1px solid var(--line);border-radius:4px;padding:0 4px;letter-spacing:.06em}
+.goldtag{font-family:var(--mono);font-size:10px;font-weight:800;color:#17191D;background:var(--gold);border-radius:4px;padding:1px 5px;letter-spacing:.06em;display:inline-flex;align-items:center;gap:4px}
+.ev .l2{font-size:15px;color:var(--dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev .amt{text-align:right;font-family:var(--mono);font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums;font-size:15px}
+.ev .amt small{display:block;font-weight:500;color:var(--faint);font-size:12px}
+.copyhint{font-family:var(--mono);font-size:11px;color:var(--acc-text);opacity:.6;transition:opacity .15s}
+.empty{padding:24px 14px;text-align:center;color:var(--dim)}
+.fishwrap{position:relative;background:#021019;aspect-ratio:16/9;flex:none}
+.fishwrap video{width:100%;height:100%;display:block;object-fit:cover;transition:filter .4s}
+.fishwrap.paused video{filter:grayscale(1) brightness(.5) contrast(1.1)}
+.fstate{position:absolute;left:9px;top:9px;right:9px;display:flex;justify-content:space-between;gap:6px}
+.fstate span{font-family:var(--cond);font-size:14px;font-weight:700;letter-spacing:.08em;padding:5px 9px;border-radius:6px;background:rgba(2,20,30,.85);color:var(--ink);border:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fstate .live{background:var(--buy);color:#03202C;box-shadow:0 0 14px rgba(92,242,176,.6)}
+.vol{display:grid;grid-template-columns:40px minmax(0,1fr) 54px 40px;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line2);flex:none}
+.vol button{width:40px;height:40px;border-radius:9px;border:1px solid var(--line);background:var(--panel-solid);cursor:pointer;display:grid;place-items:center}
+.vol input{width:100%;accent-color:#4FE3FF;height:24px}
+.vol output{font-family:var(--mono);font-weight:700;text-align:right;font-variant-numeric:tabular-nums;font-size:16px}
+.post{padding:10px 14px;border-bottom:1px solid var(--line2);display:grid;grid-template-columns:30px minmax(0,1fr);gap:11px}
+.post.gold{background:linear-gradient(90deg,rgba(232,195,90,.14),transparent);border-left:3px solid var(--gold)}
+.post.gold b{color:var(--gold)}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);opacity:0;transition:.25s;z-index:50;background:#B5F6FF;color:#03202C;box-shadow:0 0 24px rgba(79,227,255,.6);font-weight:700;padding:11px 16px;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.45);pointer-events:none;max-width:90vw;text-align:center}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.gold{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 28'%3E%3Cpath fill='%23fff' d='M2 14c6-9 18-12 28-7l8-6-2 10 2 10-8-6C20 20 8 23 2 14zm25-3a2 2 0 1 0 0 .1z'/%3E%3C/svg%3E") no-repeat right -18px center/150px 96px,url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 28'%3E%3Cpath fill='%23fff' d='M2 14c6-9 18-12 28-7l8-6-2 10 2 10-8-6C20 20 8 23 2 14zm25-3a2 2 0 1 0 0 .1z'/%3E%3C/svg%3E") no-repeat left -30px bottom -22px/90px 58px,linear-gradient(135deg,#F7D774,#E9B949 55%,#D9A23A);background-blend-mode:soft-light,soft-light,normal;color:#2A1A00;box-shadow:0 0 18px rgba(255,205,90,.45),0 0 42px rgba(255,205,90,.22),0 12px 30px rgba(0,0,0,.45);overflow:hidden;padding:13px 22px}
+.toast.gold.on{animation:goldglow 2.4s ease-in-out infinite}
+@keyframes goldglow{0%,100%{box-shadow:0 0 16px rgba(255,205,90,.4),0 0 38px rgba(255,205,90,.18),0 12px 30px rgba(0,0,0,.45)}50%{box-shadow:0 0 24px rgba(255,205,90,.6),0 0 52px rgba(255,205,90,.3),0 12px 30px rgba(0,0,0,.45)}}
+.toast small{display:block;font-family:var(--mono);font-weight:500;font-size:12px;opacity:.75;word-break:break-all}
+dialog{border:1px solid rgba(120,230,255,.35);background:linear-gradient(180deg,#0A3B4E,#05202D);color:var(--ink);border-radius:18px;padding:0;width:min(600px,94vw);max-height:90vh;box-shadow:0 30px 80px rgba(0,0,0,.55)}
+dialog::backdrop{background:rgba(1,10,16,.72);backdrop-filter:blur(4px)}
+.dh{padding:20px 22px 4px}.dh h3{margin:0 0 5px;font-family:var(--head);font-weight:400;font-size:34px;letter-spacing:.05em;color:#DFFBFF;text-shadow:0 0 16px rgba(79,227,255,.55)}.dh p{margin:0;color:var(--dim)}
+.db{padding:16px 22px;display:flex;flex-direction:column;gap:13px;overflow:auto;max-height:62vh}
+.df{padding:12px 22px 20px;display:flex;justify-content:flex-end;gap:9px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--dim)}
+.field input,.field select{height:46px;border-radius:8px;border:1px solid var(--line);background:rgba(2,20,30,.6);color:var(--ink);padding:0 12px;font-size:15px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.choice{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.choice button{text-align:left;padding:18px;border-radius:12px;border:1px solid var(--line);background:rgba(6,44,60,.7);cursor:pointer;display:flex;flex-direction:column;gap:7px}
+.choice button:hover{border-color:var(--gold)}
+.choice b{font-family:var(--head);font-weight:400;font-size:28px;letter-spacing:.05em}.choice span{font-size:14px;color:var(--dim)}
+.warn{font-size:14px;color:#FFD9A0;background:rgba(255,170,60,.1);border:1px solid rgba(255,170,60,.35);border-radius:10px;padding:9px 11px}
+.err{font-size:14px;color:var(--sell)}
+.drawer .links{display:flex;flex-wrap:wrap;gap:8px}
+.drawer .links a{text-decoration:none}
+.statgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.stat{background:rgba(6,44,60,.7);border:1px solid var(--line2);border-radius:11px;padding:10px 11px}
+.stat b{font-size:18px;font-family:var(--mono)}
+.src{font-size:13px;color:var(--faint)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (max-width:1380px){.navl .btn,.navr .btn{padding:0 10px;font-size:14px}}
+@media (max-width:1180px){.bar{grid-template-columns:1fr}.navl,.navr{justify-content:center;flex-wrap:wrap}
+  html,body{overflow:auto}#app{height:auto}
+  .grid{grid-template-columns:minmax(0,1fr)}.strip{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .panel{max-height:680px}
+}
+
+/* cut corners: each frame/button gets one random corner chamfered */
+.cut{--c:14px;position:relative}
+.cut.k-tl{clip-path:polygon(var(--c) 0,100% 0,100% 100%,0 100%,0 var(--c))}
+.cut.k-tr{clip-path:polygon(0 0,calc(100% - var(--c)) 0,100% var(--c),100% 100%,0 100%)}
+.cut.k-br{clip-path:polygon(0 0,100% 0,100% calc(100% - var(--c)),calc(100% - var(--c)) 100%,0 100%)}
+.cut.k-bl{clip-path:polygon(0 0,100% 0,100% 100%,var(--c) 100%,0 calc(100% - var(--c)))}
+.cut::after{content:"";position:absolute;width:calc(var(--c) * 1.4142);height:1.5px;background:rgba(140,235,255,.55);pointer-events:none;z-index:3}
+.cut.k-tl::after{left:0;top:var(--c);transform-origin:0 0;transform:rotate(-45deg)}
+.cut.k-tr::after{right:0;top:var(--c);transform-origin:100% 0;transform:rotate(45deg)}
+.cut.k-br::after{right:0;bottom:var(--c);transform-origin:100% 100%;transform:rotate(-45deg)}
+.cut.k-bl::after{left:0;bottom:var(--c);transform-origin:0 100%;transform:rotate(45deg)}
+.btn.cut,.chip.cut,select.cut{--c:9px}
+.pin.cut{--c:12px}.pin.cut::after{background:rgba(232,195,90,.8)}
+.panel.cut,dialog.cut{--c:18px}
+.kpi.cut{--c:15px}
+/* living header */
+@keyframes swim{0%{transform:translate3d(-12px,0,0) rotate(-3deg)}50%{transform:translate3d(12px,-3px,0) rotate(3deg)}100%{transform:translate3d(-12px,0,0) rotate(-3deg)}}
+@keyframes tailwag{0%,100%{transform:skewY(0deg)}50%{transform:skewY(-6deg)}}
+@keyframes drift{0%,100%{transform:translate3d(0,0,0);opacity:.82}50%{transform:translate3d(0,-2px,0);opacity:1}}
+@keyframes bob{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(0,2px,0)}}
+@keyframes halo{0%,100%{opacity:.35}50%{opacity:.75}}
+.brand svg{animation:swim 6s cubic-bezier(.45,.05,.55,.95) infinite;will-change:transform}
+.brand .tag{animation:drift 5s cubic-bezier(.45,.05,.55,.95) infinite;will-change:transform,opacity}
+.brand b{position:relative;display:inline-block;margin-top:9px;animation:bob 5s cubic-bezier(.45,.05,.55,.95) infinite;will-change:transform}
+.brand b::before{content:"FIHRADAR";position:absolute;inset:0;color:transparent;text-shadow:0 0 28px rgba(79,227,255,.9),0 0 60px rgba(79,227,255,.5);animation:halo 5s cubic-bezier(.45,.05,.55,.95) infinite;will-change:opacity;pointer-events:none}
+@media (prefers-reduced-motion:reduce){.brand svg,.brand .tag,.brand b,.brand b::before,.ray,.bub{animation:none}}
+.notifbtn.on{border-color:rgba(92,242,176,.8);color:var(--buy);box-shadow:0 0 12px rgba(92,242,176,.35)}
+</style>
+</head>
+<body>
+<div class="sea" aria-hidden="true"><div class="ray" style="left:8%;--r:18deg;animation-delay:-0s;opacity:0.5"></div><div class="ray" style="left:24%;--r:10deg;animation-delay:-3s;opacity:0.7"></div><div class="ray" style="left:40%;--r:2deg;animation-delay:-6s;opacity:0.9"></div><div class="ray" style="left:55%;--r:-6deg;animation-delay:-2s;opacity:0.75"></div><div class="ray" style="left:70%;--r:-14deg;animation-delay:-5s;opacity:0.6"></div><div class="ray" style="left:86%;--r:-20deg;animation-delay:-8s;opacity:0.45"></div><div class="bub" style="left:13.6%;width:6px;height:6px;animation-duration:11.9s;animation-delay:-12.5s"></div><div class="bub" style="left:91.1%;width:5px;height:5px;animation-duration:16.5s;animation-delay:-7.9s"></div><div class="bub" style="left:93.8%;width:8px;height:8px;animation-duration:9.6s;animation-delay:-17.2s"></div><div class="bub" style="left:29.2%;width:12px;height:12px;animation-duration:10.9s;animation-delay:-2.4s"></div><div class="bub" style="left:31.0%;width:4px;height:4px;animation-duration:19.6s;animation-delay:-3.6s"></div><div class="bub" style="left:56.7%;width:4px;height:4px;animation-duration:17.3s;animation-delay:-7.4s"></div><div class="bub" style="left:53.5%;width:14px;height:14px;animation-duration:9.8s;animation-delay:-1.2s"></div><div class="bub" style="left:21.4%;width:10px;height:10px;animation-duration:17.8s;animation-delay:-8.6s"></div><div class="bub" style="left:31.5%;width:4px;height:4px;animation-duration:16.6s;animation-delay:-9.1s"></div><div class="bub" style="left:30.2%;width:6px;height:6px;animation-duration:19.3s;animation-delay:-14.0s"></div><div class="bub" style="left:24.9%;width:10px;height:10px;animation-duration:16.5s;animation-delay:-10.5s"></div><div class="bub" style="left:84.3%;width:4px;height:4px;animation-duration:18.5s;animation-delay:-5.8s"></div><div class="bub" style="left:94.1%;width:10px;height:10px;animation-duration:10.5s;animation-delay:-8.4s"></div><div class="bub" style="left:73.2%;width:5px;height:5px;animation-duration:11.0s;animation-delay:-9.8s"></div><div class="bub" style="left:5.7%;width:4px;height:4px;animation-duration:17.7s;animation-delay:-15.3s"></div><div class="bub" style="left:55.9%;width:4px;height:4px;animation-duration:20.4s;animation-delay:-6.3s"></div><div class="bub" style="left:67.4%;width:8px;height:8px;animation-duration:16.7s;animation-delay:-11.6s"></div><div class="bub" style="left:44.9%;width:8px;height:8px;animation-duration:19.9s;animation-delay:-18.9s"></div><div class="bub" style="left:46.6%;width:4px;height:4px;animation-duration:17.6s;animation-delay:-1.2s"></div><div class="bub" style="left:67.9%;width:5px;height:5px;animation-duration:17.4s;animation-delay:-19.9s"></div><div class="bub" style="left:79.3%;width:4px;height:4px;animation-duration:12.7s;animation-delay:-7.7s"></div><div class="bub" style="left:64.9%;width:10px;height:10px;animation-duration:9.3s;animation-delay:-9.2s"></div><div class="bub" style="left:17.8%;width:8px;height:8px;animation-duration:10.5s;animation-delay:-1.2s"></div><div class="bub" style="left:74.2%;width:4px;height:4px;animation-duration:10.7s;animation-delay:-5.0s"></div><div class="bub" style="left:38.7%;width:14px;height:14px;animation-duration:20.3s;animation-delay:-1.6s"></div><div class="bub" style="left:44.2%;width:10px;height:10px;animation-duration:16.1s;animation-delay:-17.7s"></div><div class="vign"></div><div class="gauge" id="gauge"><i style="top:0%;width:18px"></i><span style="top:0%">0m</span><i style="top:5%;width:9px"></i><i style="top:10%;width:9px"></i><i style="top:15%;width:9px"></i><i style="top:20%;width:18px"></i><span style="top:20%">40m</span><i style="top:25%;width:9px"></i><i style="top:30%;width:9px"></i><i style="top:35%;width:9px"></i><i style="top:40%;width:18px"></i><span style="top:40%">80m</span><i style="top:45%;width:9px"></i><i style="top:50%;width:9px"></i><i style="top:55%;width:9px"></i><i style="top:60%;width:18px"></i><span style="top:60%">120m</span><i style="top:65%;width:9px"></i><i style="top:70%;width:9px"></i><i style="top:75%;width:9px"></i><i style="top:80%;width:18px"></i><span style="top:80%">160m</span><i style="top:85%;width:9px"></i><i style="top:90%;width:9px"></i><i style="top:95%;width:9px"></i><i style="top:100%;width:18px"></i><span style="top:100%">200m</span><div class="mk" id="gaugeMk" style="top:40%"></div></div></div>
+<div id="app">
+  <div class="bar">
+    <div class="navl">
+      <label class="sr" for="listSel">Active list</label>
+      <select id="listSel"></select>
+      <button class="btn" id="newListBtn" type="button">+ New list</button>
+      <button class="btn dark" id="addBtn" type="button">+ Add</button>
+    </div>
+    <div class="brand"><svg width="44" height="28" viewBox="0 0 44 28" aria-hidden="true"><path fill="#9AF2FF" d="M2 14c6-9 18-12 28-7l8-6-2 10 2 10-8-6C20 20 8 23 2 14z"/><circle cx="27" cy="11" r="1.6" fill="#03202C"/></svg><span class="tag">watch everyone's favourite trader</span><b>FIHRADAR</b></div>
+    <div class="navr">
+      <button class="btn" id="exBtn" type="button">Left out</button>
+      <button class="btn" id="srcBtn" type="button">Sources</button>
+      <button class="demo" id="liveBtn" type="button" title="Live data status">CONNECTING…</button>
+    </div>
+  </div>
+
+  <div class="strip" aria-label="Session totals">
+    <div class="kpi"><div class="lbl">Watching</div><div class="v" id="kWatch">0</div><div class="s" id="kWatchS">accounts</div></div>
+    <div class="kpi"><div class="lbl">Buys</div><div class="v pos" id="kBuys">0</div><div class="s" id="kBuysS">this session</div></div>
+    <div class="kpi"><div class="lbl">Sells</div><div class="v neg" id="kSells">0</div><div class="s" id="kSellsS">this session</div></div>
+    <div class="kpi"><div class="lbl">Callouts</div><div class="v" id="kCalls" style="color:var(--call)">0</div><div class="s" id="kCallsS">needs the paid X API</div></div>
+    <div class="kpi"><div class="lbl">Net flow</div><div class="v" id="kFlow">0 SOL</div><div class="s">bought minus sold <span class="sim">SIM</span></div></div>
+    <div class="kpi"><div class="lbl">Top 30d · Kolscan</div><div class="v" id="kTop">—</div><div class="s" id="kTopS">real, as of 12 Nov 2026</div></div>
+  </div>
+
+  <div class="grid">
+    <section class="panel" aria-label="KOLs">
+      <div class="ph"><span class="lbl">Pinned</span><span class="src" id="pinSrc"></span></div>
+      <div class="pins" id="pins"></div>
+      <div class="tools">
+        <label class="sr" for="q">Search KOLs</label><input id="q" placeholder="Search name or @handle">
+        <label class="sr" for="sort">Sort</label>
+        <select id="sort"><option value="pnl">30d PnL</option><option value="wr">Win rate</option><option value="act">Live activity</option><option value="hold">Avg hold</option></select>
+      </div>
+      <div class="ph" style="border-bottom:1px solid var(--line2)"><span class="lbl" id="listTitle">List</span><span class="src" id="listCount"></span></div>
+      <div class="scroll" id="kolList"></div>
+    </section>
+
+    <section class="panel" aria-label="Live activity">
+      <div class="ph"><span class="lbl" style="white-space:nowrap">Live activity</span><span class="src" id="evCount"></span></div>
+      <div class="ph" style="justify-content:flex-start">
+        <div class="filters" role="group" aria-label="Filter activity">
+          <button class="chip on" data-f="all" type="button">ALL</button>
+          <button class="chip" data-f="buy" type="button">BUYS</button>
+          <button class="chip" data-f="sell" type="button">SELLS</button>
+          <button class="chip" data-f="call" type="button">CALLOUTS</button>
+          <span style="width:4px"></span>
+          <button class="chip on" data-p="pump" type="button">PUMP</button>
+          <button class="chip on" data-p="axiom" type="button">AXIOM</button>
+          <button class="chip on" data-p="gmgn" type="button">GMGN</button>
+          <button class="chip on" data-p="x" type="button">X</button>
+        </div>
+      </div>
+      <div class="scroll" id="feed" aria-live="polite"></div>
+    </section>
+
+    <section class="col" aria-label="Fish and posts">
+      <div class="panel" style="flex:none">
+        <div class="fishwrap paused" id="fishWrap">
+          <video id="fish" src="fish.mp4" loop playsinline preload="auto" muted></video>
+          <div class="fstate"><span id="fishLabel">PAUSED · WAITING FOR A BUY</span></div>
+        </div>
+        <div class="vol">
+          <button type="button" id="muteBtn" aria-label="Mute fish">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path id="waves" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/><path id="muteX" d="M17 9l4 6M21 9l-4 6"/></svg>
+          </button>
+          <label class="sr" for="volume">Fish volume</label>
+          <input type="range" id="volume" min="0" max="100" step="1" value="50">
+          <output id="volOut" for="volume">50%</output>
+          <button type="button" id="notifBtn" class="notifbtn" aria-label="Desktop alerts" title="Desktop alerts when FihRadar is in the background">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="panel" style="flex:1">
+        <div class="ph"><span class="lbl">Posts on X</span><span class="src">pinned first</span></div>
+        <div class="scroll" id="posts"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<dialog id="dlgStart" aria-labelledby="startTitle">
+  <div class="dh"><h3 id="startTitle">Who do you want to watch?</h3><p>Start with the ready-made list, or build your own from X, pump.fun, Axiom and GMGN accounts. You can switch any time.</p></div>
+  <div class="db"><div class="choice">
+    <button type="button" id="pickStd"><b>Trusted 92</b><span>The standard list: 92 active KOLs ranked by 30-day Kolscan PnL, with flagged and inactive traders removed. You can add your own accounts to it.</span></button>
+    <button type="button" id="pickOwn"><b>Make my own list</b><span>Name it, then add the traders you follow.</span></button>
+  </div></div>
+</dialog>
+
+<dialog id="dlgList" aria-labelledby="listDlgTitle">
+  <form method="dialog" id="listForm">
+    <div class="dh"><h3 id="listDlgTitle">New list</h3><p>Give it a name. You'll add accounts next.</p></div>
+    <div class="db"><div class="field"><label for="listName">List name</label><input id="listName" maxlength="40" placeholder="e.g. my degens" required></div><div class="err" id="listErr"></div></div>
+    <div class="df"><button class="btn" type="button" id="listCancel">Cancel</button><button class="btn dark" type="submit">Create list</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlgAdd" aria-labelledby="addTitle">
+  <form method="dialog" id="addForm">
+    <div class="dh"><h3 id="addTitle">Add an account</h3><p>Fill in any of the platforms you know. One is enough.</p></div>
+    <div class="db">
+      <div class="field"><label for="aList">Add to</label><select id="aList"></select></div>
+      <div class="field"><label for="aName">Name</label><input id="aName" maxlength="40" placeholder="Display name"></div>
+      <div class="grid2">
+        <div class="field"><label for="aX">X handle</label><input id="aX" maxlength="40" placeholder="@handle"></div>
+        <div class="field"><label for="aPump">pump.fun profile</label><input id="aPump" maxlength="64" placeholder="username or wallet"></div>
+        <div class="field"><label for="aAxiom">Axiom wallet</label><input id="aAxiom" maxlength="64" placeholder="Solana address"></div>
+        <div class="field"><label for="aGmgn">GMGN wallet</label><input id="aGmgn" maxlength="64" placeholder="Solana address"></div>
+      </div>
+      <div class="warn" id="addWarn" hidden></div>
+      <div class="err" id="addErr"></div>
+    </div>
+    <div class="df"><button class="btn" type="button" id="addCancel">Cancel</button><button class="btn dark" type="submit">Add</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlgKol" class="drawer" aria-labelledby="kolTitle">
+  <div class="dh"><h3 id="kolTitle"></h3><p id="kolSub"></p></div>
+  <div class="db" id="kolBody"></div>
+  <div class="df"><button class="btn" type="button" id="kolRemove" hidden>Remove from list</button><button class="btn" type="button" id="kolPin">Pin</button><button class="btn dark" type="button" id="kolClose">Close</button></div>
+</dialog>
+
+<dialog id="dlgEx" aria-labelledby="exTitle">
+  <div class="dh"><h3 id="exTitle">Left out on purpose</h3><p>Not in the standard list because of public allegations, from the research doc. Unproven in court; several deny them.</p></div>
+  <div class="db" id="excluded"></div>
+  <div class="df"><button class="btn dark" type="button" id="exClose">Close</button></div>
+</dialog>
+
+<dialog id="dlgLive" aria-labelledby="liveTitle">
+  <div class="dh"><h3 id="liveTitle">Live data</h3><p>Real buys and sells, read straight from each KOL's Solana wallet.</p></div>
+  <div class="db" style="line-height:1.55">
+    <div class="livest" id="liveStatus">Connecting…</div>
+    <div>It works without any account, through a free public Solana node; each wallet is checked about every 25 seconds. <b>Optional:</b> for faster updates, paste a free key from <a href="https://dashboard.helius.dev" target="_blank" rel="noopener">dashboard.helius.dev</a>. It's saved only in this browser.</div>
+    <div class="field"><label for="liveKey">Helius API key (optional)</label><input id="liveKey" autocomplete="off" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></div>
+    <div class="src">Live covers buys and sells by every account with a wallet (all 92 in the standard list). pump.fun trades are labelled PUMP; everything else shows the DEX it went through, because Axiom and GMGN both trade through the same on-chain pools. X posts and callouts need the paid X API, so they're off. Token names and market caps come from DexScreener. Works when opened as a file or from a website (like GitHub Pages); the claude.ai preview blocks outside connections.</div>
+  </div>
+  <div class="df"><button class="btn" type="button" id="liveOff">Remove key</button><button class="btn" type="button" id="liveClose">Close</button><button class="btn dark" type="button" id="liveGo">Save key</button></div>
+</dialog>
+<dialog id="dlgSrc" aria-labelledby="srcTitle">
+  <div class="dh"><h3 id="srcTitle">Data sources</h3><p>What's real here and what's simulated.</p></div>
+  <div class="db" style="line-height:1.55">
+    <div><b>Real:</b> the standard list, X handles, 30-day and 7-day PnL and win/loss counts, from "Trusted Memecoin KOLs: Axiom, Pump.fun, GMGN" (@Boz, Kolscan data as of 12 Nov 2026). These change daily: check kolscan.io before copying a trade.</div>
+    <div><b>Live:</b> buys and sells are real, read from each KOL's wallet on Solana, with a Solscan link on every row. Hold time and session PnL are worked out from trades seen since you opened FihRadar. X posts and callouts stay off: the X API has no free tier.</div>
+    <div class="src">This is a watchlist, not financial advice. Copy-trading a KOL's public wallet doesn't guarantee their results, and side wallets don't show up.</div>
+  </div>
+  <div class="df"><button class="btn dark" type="button" id="srcClose">Got it</button></div>
+</dialog>
+
+<script>
+const DATA = {"kols": [{"rank": 1, "name": "xander", "x": "xandereef", "pnl30": 3137, "wins": 117, "losses": 279, "pnl7": null, "tier": 1, "wallet": "B3wagQZiZU2hKa5pUCj6rrdhWsX3Q6WfTTnki9PjwzMh"}, {"rank": 2, "name": "Chairman", "x": "Chairman_DN", "pnl30": 1891, "wins": 231, "losses": 466, "pnl7": 2656, "tier": 1, "wallet": "Be24Gbf5KisDk1LcWWZsBn8dvB816By7YzYF5zWZnRR6"}, {"rank": 3, "name": "decu", "x": "notdecu", "pnl30": 1617, "wins": 1700, "losses": 1653, "pnl7": 351, "tier": 1, "wallet": "4vw54BmAogeRV3vPKWyFet5yf8DTLcREzdSzx4rw9Ud9"}, {"rank": 4, "name": "trunoest", "x": "trunoest", "pnl30": 1278, "wins": 1157, "losses": 976, "pnl7": 222, "tier": 1, "wallet": "ardinRsN1mNYVeoJWTBsWeYeXvuR9UUDGMsCDKpb6AT"}, {"rank": 5, "name": "ban", "x": "Ban_Val", "pnl30": 1156, "wins": 1807, "losses": 1876, "pnl7": 230, "tier": 1, "wallet": "EqiFgyNw6kgrmYstWyrP8VjKhka7XEmKTZzHSmwpr1Zb"}, {"rank": 6, "name": "gr3g", "x": "gr3gor14n", "pnl30": 1153, "wins": 109, "losses": 115, "pnl7": 1345, "tier": 1, "wallet": "J23qr98GjGJJqKq9CBEnyRhHbmkaVxtTJNNxKu597wsA"}, {"rank": 7, "name": "Schoen", "x": "Schoen_xyz", "pnl30": 1046, "wins": 1146, "losses": 1134, "pnl7": 771, "tier": 1, "wallet": "5hAgYC8TJCcEZV7LTXAzkTrm7YL29YXyQQJPCNrG84zM"}, {"rank": 8, "name": "Wugi", "x": "xWugi_wara", "pnl30": 1023, "wins": 83, "losses": 30, "pnl7": 237, "tier": 1, "wallet": "862TYSvRYoiHAK3F3WwTRYAfuGiQaGdxedN9AGvRGWo2"}, {"rank": 9, "name": "Kadenox", "x": "kadenox", "pnl30": 1013, "wins": 593, "losses": 488, "pnl7": 332, "tier": 1, "wallet": "B32QbbdDAyhvUQzjcaM5j6ZVKwjCxAwGH5Xgvb9SJqnC"}, {"rank": 10, "name": "West", "x": "ratwizardx", "pnl30": 615, "wins": 330, "losses": 476, "pnl7": 620, "tier": 1, "wallet": "JDd3hy3gQn2V982mi1zqhNqUw1GfV2UL6g76STojCJPN"}, {"rank": 11, "name": "Shawty", "x": "sh4vwty", "pnl30": 556, "wins": 1669, "losses": 1258, "pnl7": 82, "tier": 1, "wallet": "387FRwow6MKDhSwuMULhKjqeXuxoBY4BbbaSntdk9LaH"}, {"rank": 12, "name": "Reljoo", "x": "Reljoooo", "pnl30": 550, "wins": 145, "losses": 387, "pnl7": 280, "tier": 1, "wallet": "FsG3BaPmRTdSrPaivbgJsFNCCa8cPfkUtk8VLWXkHpHP"}, {"rank": 13, "name": "Euris", "x": "Euris_JT", "pnl30": 510, "wins": 37, "losses": 68, "pnl7": 536, "tier": 1, "wallet": "DfMxre4cKmvogbLrPigxmibVTTQDuzjdXojWzjCXXhzj"}, {"rank": 14, "name": "Johnson", "x": "johnsoncooks101", "pnl30": 506, "wins": 398, "losses": 316, "pnl7": 171, "tier": 1, "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB"}, {"rank": 15, "name": "DustNukes", "x": "DustNukes", "pnl30": 495, "wins": 520, "losses": 869, "pnl7": 84, "tier": 1, "wallet": "FzVQSzj8JJr6WMGqbUHzx2XH1KkrfxRrRPv6WcbbZmND"}, {"rank": 16, "name": "milito", "x": "fnmilito", "pnl30": 477, "wins": 476, "losses": 791, "pnl7": null, "tier": 1, "wallet": "EeXvxkcGqMDZeTaVeawzxm9mbzZwqDUMmfG3bF7uzumH"}, {"rank": 17, "name": "Doji", "x": "Humanevolvd", "pnl30": 430, "wins": 527, "losses": 392, "pnl7": 171, "tier": 1, "wallet": "5ZuV8eqkvzYFVEKbLvGBdexL2tFv7E5BCd2HZpjqbdg"}, {"rank": 18, "name": "KOREAN", "x": "Korean_bags", "pnl30": 381, "wins": 1078, "losses": 1674, "pnl7": 49, "tier": 1, "wallet": "6KR7SorsUQtNH6CB6JpAnWCAKeTysa95iyXeWihdNeGT"}, {"rank": 19, "name": "Jijo", "x": "jijo_exe", "pnl30": 356, "wins": 238, "losses": 187, "pnl7": 51, "tier": 1, "wallet": "4BdKaxN8G6ka4GYtQQWk4G4dZRUTX2vQH9GcXdBREFUk"}, {"rank": 20, "name": "Meechie", "x": "973Meech", "pnl30": 347, "wins": 406, "losses": 1059, "pnl7": 201, "tier": 1, "wallet": "9iaawVBEsFG35PSwd4PahwT8fYNQe9XYuRdWm872dUqY"}, {"rank": 21, "name": "Megga", "x": "Megga", "pnl30": 338, "wins": 872, "losses": 1434, "pnl7": 149, "tier": 1, "wallet": "H31vEBxSJk1nQdUN11qZgZyhScyShhscKhvhZZU3dQoU"}, {"rank": 22, "name": "Limfork.eth", "x": "Limfork", "pnl30": 318, "wins": 953, "losses": 849, "pnl7": null, "tier": 1, "wallet": "BQVz7fQ1WsQmSTMY3umdPEPPTm1sdcBcX9sP7o6kPRmB"}, {"rank": 23, "name": "M A M B A", "x": "mambatrades_", "pnl30": 288, "wins": 669, "losses": 1221, "pnl7": null, "tier": 2, "wallet": "BnfiHRDpHQ5yQevvwnzTmxtaB1Ek276fV5oTY9bi71EA"}, {"rank": 24, "name": "clukz", "x": "clukzSOL", "pnl30": 277, "wins": 215, "losses": 231, "pnl7": 142, "tier": 2, "wallet": "G6fUXjMKPJzCY1rveAE6Qm7wy5U3vZgKDJmN1VPAdiZC"}, {"rank": 25, "name": "The Doc", "x": "KayTheDoc", "pnl30": 266, "wins": 268, "losses": 379, "pnl7": 122, "tier": 2, "wallet": "DYAn4XpAkN5mhiXkRB7dGq4Jadnx6XYgu8L5b3WGhbrt"}, {"rank": 26, "name": "big bags bobby", "x": "bigbagsbobby", "pnl30": 259, "wins": 121, "losses": 148, "pnl7": null, "tier": 2, "wallet": "8oQoMhfBQnRspn7QtNAq2aPThRE4q94kLSTwaaFQvRgs"}, {"rank": 27, "name": "Lynk", "x": "lynk0x", "pnl30": 223, "wins": 367, "losses": 673, "pnl7": 83, "tier": 2, "wallet": "CkPFGv2Wv1vwdWjtXioEgb8jhZQfs3eVZez3QCetu7xD"}, {"rank": 28, "name": "Ethan Prosper", "x": "pr6spr", "pnl30": 222, "wins": 261, "losses": 478, "pnl7": 395, "tier": 2, "wallet": "sAdNbe1cKNMDqDsa4npB3TfL62T14uAo2MsUQfLvzLT"}, {"rank": 29, "name": "Art", "x": "ArtCryptoz", "pnl30": 214, "wins": 627, "losses": 1015, "pnl7": null, "tier": 2, "wallet": "CgaA9a1JwAXJyfHuvZ7VW8YfTVRkdiT5mjBBSKcg7Rz5"}, {"rank": 30, "name": "EustazZ", "x": "Eustazzeus", "pnl30": 209, "wins": 1137, "losses": 1402, "pnl7": 62, "tier": 2, "wallet": "FqamE7xrahg7FEWoByrx1o8SeyHt44rpmE6ZQfT7zrve"}, {"rank": 31, "name": "Flames", "x": "FlamesOnSol", "pnl30": 203, "wins": 1158, "losses": 1969, "pnl7": 62, "tier": 2, "wallet": "6aXFYXbFob1ZKAEDCcqZnX2vooA3TgEqDoy5dAQbeWoV"}, {"rank": 32, "name": "AlxCooks", "x": "AlxCooks_off", "pnl30": 201, "wins": 587, "losses": 871, "pnl7": 41, "tier": 2, "wallet": "89HbgWduLwoxcofWpmn1EiF9wEdpgkNDEyPjzZ72mkDi"}, {"rank": 33, "name": "Daumen", "x": "daumenxyz", "pnl30": 201, "wins": 1143, "losses": 867, "pnl7": null, "tier": 2, "wallet": "8MaVa9kdt3NW4Q5HyNAm1X5LbR8PQRVDc1W8NMVK88D5"}, {"rank": 34, "name": "Sheep", "x": "imsheepsol", "pnl30": 198, "wins": 416, "losses": 394, "pnl7": 88, "tier": 2, "wallet": "78N177fzNJpp8pG49xDv1efYcTMSzo9tPTKEA9mAVkh2"}, {"rank": 35, "name": "Zef", "x": "zefwashere", "pnl30": 186, "wins": 453, "losses": 791, "pnl7": null, "tier": 2, "wallet": "EjtQrPTbcMevStBkpnjsH23NfUCMhGHusTYsHuGVQZp2"}, {"rank": 36, "name": "MrDD", "x": "MrD_Onmemes", "pnl30": 175, "wins": 241, "losses": 429, "pnl7": null, "tier": 2, "wallet": "9udqZzePbx3N7917LK9PzgxrDqQEQDECtLc8KTYCNghX"}, {"rank": 37, "name": "Nyhrox", "x": "nyhrox", "pnl30": 166, "wins": 116, "losses": 141, "pnl7": null, "tier": 2, "wallet": "6S8GezkxYUfZy9JPtYnanbcZTMB87Wjt1qx3c6ELajKC"}, {"rank": 38, "name": "Latuche", "x": "Latuche95", "pnl30": 165, "wins": 217, "losses": 258, "pnl7": null, "tier": 2, "wallet": "GJA1HEbxGnqBhBifH9uQauzXSB53to5rhDrzmKxhSU65"}, {"rank": 39, "name": "Walta", "x": "Walta61", "pnl30": 160, "wins": 27, "losses": 51, "pnl7": null, "tier": 2, "wallet": "39q2g5tTQn9n7KnuapzwS2smSx3NGYqBoea11tBjsGEt"}, {"rank": 40, "name": "Yami", "x": "YamiPNL", "pnl30": 150, "wins": 913, "losses": 1612, "pnl7": 60, "tier": 2, "wallet": "7Js5gmq57y9jG2sseKrAeJt3vbncSWSFFHDEsyJDnyVm"}, {"rank": 41, "name": "WheresLodo", "x": "WheresLodo01", "pnl30": 148, "wins": 445, "losses": 520, "pnl7": 91, "tier": 2, "wallet": "6FWhUybWmnjsQ933v2r6o7bhEG5yH9g9XsV7NVWKj5EW"}, {"rank": 42, "name": "leyko", "x": "0xleyko", "pnl30": 134, "wins": 224, "losses": 391, "pnl7": 29, "tier": 2, "wallet": "Ab2baaggUWJMsVUtCvpRjq6iBRDk2Lxr5qzicHueHxM1"}, {"rank": 43, "name": "Xanse.", "x": "Xanse_crypto", "pnl30": 133, "wins": 94, "losses": 325, "pnl7": 255, "tier": 2, "wallet": "B9K2wTQcRDLRLhMKFyRh2hPqHrr6VKiCC9yNGpkMUXrh"}, {"rank": 44, "name": "Gfree", "x": "G_free9", "pnl30": 133, "wins": 398, "losses": 596, "pnl7": null, "tier": 2, "wallet": "4yo9CUuTBbds9NFhZd4MzPiZZkUvveXdTnAH8qMsE8ku"}, {"rank": 45, "name": "Dani", "x": "DaniWorldwide", "pnl30": 115, "wins": 100, "losses": 234, "pnl7": null, "tier": 2, "wallet": "AuPp4YTMTyqxYXQnHc5KUc6pUuCSsHQpBJhgnD45yqrf"}, {"rank": 46, "name": "radiance", "x": "radiancebrr", "pnl30": 114, "wins": 358, "losses": 611, "pnl7": null, "tier": 2, "wallet": "FAicXNV5FVqtfbpn4Zccs71XcfGeyxBSGbqLDyDJZjke"}, {"rank": 47, "name": "Fashr", "x": "FASHRCrypto", "pnl30": 109, "wins": 734, "losses": 1282, "pnl7": null, "tier": 2, "wallet": "719sfKUjiMThumTt2u39VMGn612BZyCcwbM5Pe8SqFYz"}, {"rank": 48, "name": "Kev", "x": "Kevsznx", "pnl30": 98, "wins": 851, "losses": 1451, "pnl7": null, "tier": 3, "wallet": "BTf4A2exGK9BCVDNzy65b9dUzXgMqB4weVkvTMFQsadd"}, {"rank": 49, "name": "CookDoc", "x": "CookDoc1993", "pnl30": 80, "wins": 43, "losses": 20, "pnl7": null, "tier": 3, "wallet": "Dvbv5TdAyPpJk16X9mUxWFVicYtCUxTLhuof8TGuUaRv"}, {"rank": 50, "name": "neo.", "x": "neodot", "pnl30": 75, "wins": 88, "losses": 69, "pnl7": null, "tier": 3, "wallet": "5o3kAZLwEzNF1kfVv8JSEqv6sSB88pZbHxF1oYTxgXzG"}, {"rank": 51, "name": "Coler", "x": "ColerCooks", "pnl30": 74, "wins": 430, "losses": 684, "pnl7": null, "tier": 3, "wallet": "99xnE2zEFi8YhmKDaikc1EvH6ELTQJppnqUwMzmpLXrs"}, {"rank": 52, "name": "Profit", "x": "FlippingProfits", "pnl30": 72, "wins": 2, "losses": 1, "pnl7": null, "tier": 3, "wallet": "G5nxEXuFMfV74DSnsrSatqCW32F34XUnBeq3PfDS7w5E"}, {"rank": 53, "name": "Toxic weast", "x": "Toxic_weast", "pnl30": 71, "wins": 136, "losses": 242, "pnl7": null, "tier": 3, "wallet": "DU323DieHUGPmYamp6A4Ai1V4YSYgRi35mGpzJGrjf7k"}, {"rank": 54, "name": "crayohla", "x": "CrayohlaEU", "pnl30": 66, "wins": 147, "losses": 323, "pnl7": null, "tier": 3, "wallet": "GDoG4tdbx8qkpECQKF5MebbEDpFJn6H739psqgoTG3aN"}, {"rank": 55, "name": "AsyncDuck", "x": "Async_duck", "pnl30": 66, "wins": 105, "losses": 129, "pnl7": null, "tier": 3, "wallet": "FeYVZPsDkmg3D9ddcySxLqGvAR9ES29ABZkeRcUn4FfY"}, {"rank": 56, "name": "el charto", "x": "elchartox", "pnl30": 60, "wins": 141, "losses": 163, "pnl7": null, "tier": 3, "wallet": "CCUcjek5p6DLoH2YNtjizxYhAnStXAQAGVxhp1cYJF7w"}, {"rank": 57, "name": "set", "x": "Setuhx", "pnl30": 53, "wins": 207, "losses": 418, "pnl7": null, "tier": 3, "wallet": "62N1K57D37AUDGp68tnDYKPjGDsaAAtmo357nBtEtuR"}, {"rank": 58, "name": "dov 7", "x": "dovvvv7", "pnl30": 49, "wins": 135, "losses": 162, "pnl7": null, "tier": 3, "wallet": "8nqtxpFpuXwfXG4pBLsDkkuMMPK9FjSkBMCn542HiM3v"}, {"rank": 59, "name": "Idontpaytaxes", "x": "untaxxable", "pnl30": 49, "wins": 175, "losses": 190, "pnl7": null, "tier": 3, "wallet": "2T5NgDDidkvhJQg8AHDi74uCFwgp25pYFMRZXBaCUNBH"}, {"rank": 60, "name": "Putrick", "x": "Putrickk", "pnl30": 48, "wins": 323, "losses": 652, "pnl7": null, "tier": 3, "wallet": "AVjEtg2ECYKXYeqdRQXvaaAZBjfTjYuSMTR4WLhKoeQN"}, {"rank": 61, "name": "nad", "x": "NADGEMS", "pnl30": 46, "wins": 163, "losses": 262, "pnl7": null, "tier": 3, "wallet": "363sqMFaxZgvCoGzxKjXe1BqMGYkSVoCwmghZUndXuaT"}, {"rank": 62, "name": "JADAWGS", "x": "10xJDOG", "pnl30": 44, "wins": 16, "losses": 8, "pnl7": null, "tier": 3, "wallet": "3H9LVHarjBoZ2YPEsgFbVD1zuERCGwfp4AeyHoHsFSEC"}, {"rank": 63, "name": "CoCo", "x": "CoCoCookerr", "pnl30": 40, "wins": 320, "losses": 562, "pnl7": null, "tier": 3, "wallet": "FqojC24nUn3x6oMQC2ypBHmtH7rFAnKS6DvwsJoCMaiv"}, {"rank": 65, "name": "rambo", "x": "goatedondsticks", "pnl30": 35, "wins": 157, "losses": 346, "pnl7": null, "tier": 3, "wallet": "2net6etAtTe3Rbq2gKECmQwnzcKVXRaLcHy2Zy1iCiWz"}, {"rank": 66, "name": "PattyIce", "x": "patty_fi", "pnl30": 34, "wins": 121, "losses": 100, "pnl7": null, "tier": 3, "wallet": "6nhskL8RVpXzWXC7mcC1UXpe3ze2p6P6og1jXVGUW88s"}, {"rank": 67, "name": "Hash", "x": "Hashbergers", "pnl30": 33, "wins": 58, "losses": 676, "pnl7": null, "tier": 3, "wallet": "DNsh1UfJdxmze6T6GV9QK5SoFm7HsM5TRNxVuwVgo8Zj"}, {"rank": 68, "name": "Creator Finance", "x": "CreatorFinanceX", "pnl30": 33, "wins": 1, "losses": 0, "pnl7": null, "tier": 3, "wallet": "G4q7d1fckiQ4uXxtQpEfgddzBVrXs28yr7VEP2xdRi4p"}, {"rank": 71, "name": "Divix", "x": "cryptodivix", "pnl30": 29, "wins": 10, "losses": 6, "pnl7": null, "tier": 3, "wallet": "FajxNukkjDLGXfB5V3L1msrU9qgzuzhN4s4YQfefSCKp"}, {"rank": 72, "name": "Letterbomb", "x": "ihateoop", "pnl30": 28, "wins": 321, "losses": 385, "pnl7": null, "tier": 3, "wallet": "BtMBMPkoNbnLF9Xn552guQq528KKXcsNBNNBre3oaQtr"}, {"rank": 73, "name": "J Spizzle", "x": "JSpizzleCrypto", "pnl30": 26, "wins": 117, "losses": 165, "pnl7": null, "tier": 3, "wallet": "4z3WtX32eehkmnaNNstZWyAuVBhj6cgpk5JtkdTa4m4A"}, {"rank": 74, "name": "cuban", "x": "oCubann", "pnl30": 23, "wins": 4, "losses": 12, "pnl7": null, "tier": 3, "wallet": "EcVgevcb8F3QsHuBg96wrCXwC3j2gnrhLr1Q21YULNk8"}, {"rank": 75, "name": "Boomer", "x": "boomerbuilds", "pnl30": 23, "wins": 31, "losses": 71, "pnl7": null, "tier": 3, "wallet": "4JyenL2p8eQZAQuRS8QAASy7TzEcqAeKGha6bhiJXudh"}, {"rank": 76, "name": "kz", "x": "kayz_ce", "pnl30": 18, "wins": 188, "losses": 153, "pnl7": null, "tier": 3, "wallet": "F8WtsrLzexRkjv11b1sgA3Qj7E889RGYa1jFLGoPwKTB"}, {"rank": 77, "name": "BULLZ", "x": "BullzCalls1", "pnl30": 16, "wins": 19, "losses": 39, "pnl7": null, "tier": 3, "wallet": "6UwCF9JCEPRFfBKibwAoyuEZukLwzATiWRjiGnH1Eass"}, {"rank": 79, "name": "Dali", "x": "SolanaDali", "pnl30": 14, "wins": 389, "losses": 912, "pnl7": null, "tier": 3, "wallet": "CvNiezB8hofusHCKqu8irJ6t2FKY7VjzpSckofMzk5mB"}, {"rank": 80, "name": "Woozy", "x": "woozy2so", "pnl30": 14, "wins": 124, "losses": 266, "pnl7": null, "tier": 3, "wallet": "9tRff7L6Mx3ZDNBoGPffdjD3c9JNzLc3nxzadYH4TnAp"}, {"rank": 81, "name": "Jdn", "x": "JadenOnChain", "pnl30": 9, "wins": 139, "losses": 406, "pnl7": null, "tier": 3, "wallet": "2iPgNgss7ow3v5YFkTpzABStfjFSyG3BGvP5sZqADtFM"}, {"rank": 82, "name": "yvqex", "x": "yvqex", "pnl30": 8, "wins": 283, "losses": 456, "pnl7": null, "tier": 3, "wallet": "GxkZFdUZutbSecYbgYTgAme3knAJPhta6gDa51WzfDYs"}, {"rank": 83, "name": "Sizeab1e", "x": "sizeab1e", "pnl30": 7, "wins": 5, "losses": 2, "pnl7": null, "tier": 3, "wallet": "AtmeWwb6Y6KNDgu2dPJT5dsar84bFCbNxLiW2DyYfm8p"}, {"rank": 84, "name": "kitty", "x": "0xkitty69", "pnl30": 6, "wins": 32, "losses": 20, "pnl7": null, "tier": 3, "wallet": "qP3Q8d4WWsGbqkTfyA9Dr6cAD7DQoBuxPJMFTK48rWU"}, {"rank": 85, "name": "Veloce", "x": "VeloceSVJ", "pnl30": 5, "wins": 96, "losses": 232, "pnl7": null, "tier": 3, "wallet": "2W14ahXD3XBfWJchQ4K5NLXmguWWcTTUTuHDhEzeuvP3"}, {"rank": 86, "name": "JinMu", "x": "LongzuAlpha", "pnl30": 5, "wins": 1, "losses": 0, "pnl7": null, "tier": 3, "wallet": "8tP391aDbKKpQS7eKnCEfnJ8Cmek6jatEe2LFkdJ2PRP"}, {"rank": 87, "name": "psykø", "x": "psykogem", "pnl30": 4, "wins": 22, "losses": 8, "pnl7": null, "tier": 3, "wallet": "FC3nyVqdufVfrgXiRJEqgST1JdJSEBEz6a9KoBfFP7c4"}, {"rank": 88, "name": "Fabix", "x": "Fabix_R", "pnl30": 2, "wins": 34, "losses": 61, "pnl7": null, "tier": 3, "wallet": "DN7pYLSGYqHXwvPLh8tJM2zoJjhMSsNGVRVkMWVpredr"}, {"rank": 89, "name": "Ray", "x": "23slyy", "pnl30": 2, "wins": 5, "losses": 16, "pnl7": null, "tier": 3, "wallet": "HvNqQBTfoiksyvzGR5rrNAv46DjeNgGNMTB5YZpYh16W"}, {"rank": 90, "name": "passit", "x": "passitome", "pnl30": 2, "wins": 2, "losses": 0, "pnl7": null, "tier": 3, "wallet": "5Pe7HtNfYYU2HC4JWAEhiZPVooFwUXAndvsJhSV5L5s4"}, {"rank": 91, "name": "Mezoteric", "x": "mezoteric", "pnl30": 2, "wins": 1, "losses": 0, "pnl7": null, "tier": 3, "wallet": "EdDCRfDDeiiDXdntrP59abH4DXHFNU48zpMPYisDMjA7"}, {"rank": 92, "name": "dash", "x": "dashcrypto_", "pnl30": 2, "wins": 249, "losses": 312, "pnl7": null, "tier": 3, "wallet": "4ESzFZUWUdr2GsgHBVeQKuzAmBWS5sRSaXw6PZH2EAau"}, {"rank": 93, "name": "Pain", "x": "ipaincharts", "pnl30": 2, "wins": 6, "losses": 7, "pnl7": null, "tier": 3, "wallet": "GEpM1SmE8ExgznJwyZX64F2Mv5LLFgvBCxm5zNWYUXL4"}, {"rank": 94, "name": "Dedmeow5", "x": "dedmeow5", "pnl30": 2, "wins": 0, "losses": 1, "pnl7": null, "tier": 3, "wallet": "9THzoX5yGNSgPBAjCF4Lgqc1wLXoFkMQit4XWbhhRnqE"}, {"rank": 95, "name": "Goyim", "x": "goyimpnl", "pnl30": 1, "wins": 67, "losses": 259, "pnl7": null, "tier": 3, "wallet": "G3gZWqrYkNmYFKYCyfRCNtGuxdyuE2wiYKkZpiZn4WSS"}, {"rank": 96, "name": "trav", "x": "travonsol", "pnl30": 1, "wins": 26, "losses": 72, "pnl7": null, "tier": 3, "wallet": "CXnf4Tt7qFz3KZNwn3Yve5MKaRyxGoAy2eDX3QT8e99m"}], "excluded": [{"name": "Cupsey", "x": "Cupseyy", "why": "Bubblemaps alleges ~30 linked side wallets sold into copy-traders (~$1.74M)", "when": "Nov 2026"}, {"name": "Beaver", "x": "beaverd", "why": "Bubblemaps says he launched, sniped with side wallets and rugged a token (~$600K)", "when": "Feb 2026"}, {"name": "0xEthan", "x": "0xEthan", "why": "Bubblemaps: three secret wallets bought with him, sold within ~3 min of callouts", "when": "Oct–Nov 2026"}, {"name": "Solstice", "x": "The__Solstice", "why": "Bubblemaps: bundled buys on promoted coins; he says he only backs teams he trusts", "when": "Oct–Nov 2026"}, {"name": "Anglio", "x": null, "why": "Linked wallets bought 61% of his calls ~20s before he posted", "when": "Oct 2026"}, {"name": "Kimchi", "x": null, "why": "Bubblemaps says the \"$40M on TRUMP\" story was closer to $6M, via hidden wallets", "when": "Oct 2026"}, {"name": "Orangie", "x": "orangie", "why": "Named in the CHAD coin stream-promo incident; he denies his manager was involved", "when": "Mar 2026"}, {"name": "Ansem", "x": "blknoiz06", "why": "ZachXBT called his low-cap promos pump-and-dumps; he denies paid promos", "when": "2024; Nov 2026"}, {"name": "Murad", "x": "MustStopMurad", "why": "ZachXBT published 11 wallets holding large shares of coins he promoted", "when": "Oct 2024"}, {"name": "James Wynn", "x": "JamesWynnReal", "why": "Bubblemaps found insiders held ~60% of a coin he promoted", "when": "2025–2026"}], "removed": [{"name": "Eric Cryptoman", "x": "EricCryptoman", "wallet": "EgnY4zmqXuaqodCLW366jjd2ecki6pvmMF74MkSxMFQW"}, {"name": "FINN", "x": "finnbags", "wallet": "BTeqNydtKyDaSxQNRm8ByaUDPK3cpQ1FsXMtaF1Hfaom"}, {"name": "dingaling", "x": "dingalingts", "wallet": "9X5n5i1mugTjgGPhqf1KJDt8r4kD8TF3s62ttbxKzFHa"}, {"name": "Pow", "x": "traderpow", "wallet": "8zFZHuSRuDpuAR7J6FzwyF3vKNx4CVW3DFHJerQhc7Zd"}, {"name": "Scooter", "x": "imperooterxbt", "wallet": "9NL6thsiaoyDnm7XF8hEbMoqeG172WmG7iKYpygvjfgo"}, {"name": "eezzyLIVE", "x": "notEezzy", "wallet": "DiDbxfveAcnescZWYjkVJzXiEWjskZKAFVTq2hrfHNjN"}, {"name": "dxrnelljcl", "x": "dxrnell", "wallet": "3jzHjoPKaceZjA6AqAWka7Ghw9F3w9k9cvjGTmybdioT"}, {"name": "Issa", "x": "issathecooker", "wallet": "2BU3NAzgRA2gg2MpzwwXpA8X4CCRaLgrf6TY1FKfJPX2"}]};
+// ---------- helpers ----------
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const cleanHandle = (s) => String(s || '').trim().replace(/^https?:\/\/(www\.)?(x|twitter)\.com\//i, '').replace(/^@/, '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 30);
+const cleanId = (s) => String(s || '').trim().replace(/[^A-Za-z0-9_.-]/g, '').slice(0, 64);
+const fmt = (n, d = 0) => Number(n).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
+const sgn = (n, d = 0) => (n >= 0 ? '+' : '−') + fmt(Math.abs(n), d);
+const hue = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h % 360; };
+const AVC = new Map();
+// 8x6 pixel fish; body pattern, fin and colours come from a hash of the handle
+const FISH_MASK = ['..XXXX..', '.XXXXXX.', 'XXXXXXXX', 'XXXXXXXX', '.XXXXXX.', '..XXXX..'];
+function fishAvatar(key) {
+  if (AVC.has(key)) return AVC.get(key);
+  let h = 2166136261; for (const c of String(key)) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0;
+  const rnd = () => ((h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0) / 4294967296);
+  const hu = Math.floor(rnd() * 360), hu2 = (hu + 40 + Math.floor(rnd() * 140)) % 360;
+  const body = `hsl(${hu} 75% 62%)`, belly = `hsl(${hu} 85% 82%)`, stripe = `hsl(${hu2} 80% 58%)`;
+  const bg1 = `hsl(${(hu + 180) % 360} 55% 22%)`, bg2 = `hsl(${(hu + 200) % 360} 60% 12%)`;
+  const stripes = [1 + Math.floor(rnd() * 3), 4 + Math.floor(rnd() * 2)];
+  let px = '';
+  FISH_MASK.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (ch !== 'X') return;
+    let c = y >= 4 ? belly : body;
+    if (stripes.includes(x) && y > 0 && y < 5 && rnd() > 0.2) c = stripe;
+    px += `<rect x="${x + 4}" y="${y + 5}" width="1" height="1" fill="${c}"/>`;
+  }));
+  const tail = rnd() > 0.5 ? `<path d="M4 7h-3v1h1v1h-1v1h-1v1h3z" fill="${stripe}"/>` : `<path d="M4 6h-2v1h-1v4h1v1h2z" fill="${stripe}"/>`;
+  const eye = `<rect x="10" y="7" width="1" height="1" fill="#03202C"/><rect x="10" y="6" width="1" height="1" fill="#fff" opacity=".9"/>`;
+  const bub = rnd() > 0.5 ? `<rect x="13" y="${3 + Math.floor(rnd() * 3)}" width="1" height="1" fill="#CFF8FF" opacity=".8"/>` : '';
+  const svg = `<svg viewBox="0.5 2.5 14 12" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges" aria-hidden="true"><defs><radialGradient id="g"><stop offset="0" stop-color="${bg1}"/><stop offset="1" stop-color="${bg2}"/></radialGradient></defs><rect x="-2" y="-2" width="20" height="20" fill="url(#g)"/>${tail}${px}${eye}${bub}</svg>`;
+  AVC.set(key, svg); return svg;
+}
+const avatar = (a) => `<div class="av" aria-hidden="true">${fishAvatar((a.x || a.name || '?').toLowerCase())}</div>`;
+const dur = (s) => { s = Math.round(s); if (s < 60) return s + 's'; if (s < 3600) return Math.floor(s / 60) + 'm ' + String(s % 60).padStart(2, '0') + 's'; return Math.floor(s / 3600) + 'h ' + Math.floor((s % 3600) / 60) + 'm'; };
+const ago = (t) => { const s = Math.max(0, (Date.now() - t) / 1000); return s < 5 ? 'now' : s < 60 ? Math.floor(s) + 's ago' : s < 3600 ? Math.floor(s / 60) + 'm ago' : s < 86400 ? Math.floor(s / 3600) + 'h ago' : Math.floor(s / 86400) + 'd ago'; };
+const uid = () => Math.random().toString(36).slice(2, 10);
+
+// ---------- data ----------
+const STANDARD = DATA.kols.map((k) => ({ id: 'k' + k.rank, name: k.name, x: k.x, pump: '', axiom: '', gmgn: '', std: true,
+  stats: { rank: k.rank, tier: k.tier, pnl30: k.pnl30, pnl7: k.pnl7, wins: k.wins, losses: k.losses }, wallet: k.wallet }));
+const EXCLUDED = DATA.excluded;
+const excludedFor = (x) => EXCLUDED.find((e) => e.x && x && e.x.toLowerCase() === x.toLowerCase());
+
+let state = { v: 1, onboarded: false, active: 'std', lists: [], stdExtra: [], pins: {} };
+let store = null; // { save(state) }
+
+function activeList() { return state.active === 'std' ? null : state.lists.find((l) => l.id === state.active) || null; }
+function accounts() {
+  const l = activeList();
+  return l ? l.accounts : STANDARD.concat(state.stdExtra);
+}
+function listName() { const l = activeList(); return l ? l.name : 'Trusted 92'; }
+function pinsFor() {
+  const key = state.active, saved = state.pins[key];
+  if (saved) return saved;
+  const acc = accounts();
+  return acc.filter((a) => a.stats).sort((a, b) => b.stats.pnl30 - a.stats.pnl30).slice(0, 6).map((a) => a.id)
+    .concat(acc.filter((a) => !a.stats).slice(0, 4).map((a) => a.id)).slice(0, 6);
+}
+function togglePin(id) {
+  const p = pinsFor().slice(), i = p.indexOf(id);
+  if (i >= 0) p.splice(i, 1); else p.unshift(id);
+  state.pins[state.active] = p.slice(0, 8); persist(); renderAll();
+}
+
+// ---------- persistence: per-person doc, falls back to this browser ----------
+let saveTimer = null, saving = Promise.resolve();
+function persist() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { const snap = JSON.parse(JSON.stringify(state)); saving = saving.then(() => store && store.save(snap)).catch(() => {}); }, 400);
+}
+function localStore() {
+  return { load() { try { return JSON.parse(localStorage.getItem('kolwatch:v1') || 'null'); } catch (e) { return null; } },
+           save(s) { try { localStorage.setItem('kolwatch:v1', JSON.stringify(s)); } catch (e) { /* storage unavailable */ } } };
+}
+async function initStore() {
+  const local = localStore();
+  const ls = local.load();
+  if (ls && ls.v === 1) { state = Object.assign(state, ls); }
+  store = local;
+  try {
+    if (!window.claude || !window.claude.use) return;
+    const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+    const id = user ? await user.id() : null;
+    if (!db || !id) return;
+    const ref = db.doc('data/users/' + id + '/kolwatch');
+    const snap = await Promise.race([ref.get(), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))]);
+    if (snap.exists) { const d = snap.data(); if (d && d.state) { state = Object.assign({ v: 1, onboarded: false, active: 'std', lists: [], stdExtra: [], pins: {} }, JSON.parse(JSON.stringify(d.state))); } }
+    store = { save: async (s) => { local.save(s); try { await ref.set({ state: s, updatedAt: new Date().toISOString() }); } catch (e) { /* keep local copy */ } } };
+    renderAll();
+    if (state.onboarded && $('dlgStart').open) $('dlgStart').close();
+  } catch (e) { /* stay on this browser's copy */ }
+}
+
+// ---------- simulation (demo feed) ----------
+const TOK = ['PEPE','WIF','BONK','GOAT','MOODENG','CHAD','FROG','NEKO','POPCAT','MEW','JEET','RIZZ','WAGMI','BASED','HAMSTER','PNUT','FWOG','ZEUS','GROK','AIXBT','SHARK','FISH','FUNKY','TOWN','GIGA','SIGMA','TRENCH','DEGEN','RETARDIO','LOCKIN','CATWIF','BUTTHOLE'];
+const SUFX = ['', '', '', 'AI', 'INU', '2', 'SOL', 'X', 'COIN'];
+const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+function fakeCA(plat) { let a = ''; for (let i = 0; i < (plat === 'pump' ? 40 : 44); i++) a += B58[Math.floor(Math.random() * 58)]; return plat === 'pump' ? a + 'pump' : a; }
+const SPEED = 20; // simulated seconds per real second, so holds look like real trading
+const sim = { events: [], byAcc: {}, filter: 'all', plats: { pump: true, axiom: true, gmgn: true, x: true, dex: true } };
+function accSim(a) { return sim.byAcc[a.id] || (sim.byAcc[a.id] = { open: [], holds: [], realized: 0, count: 0, last: 0 }); }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function weightOf(a) { if (!a.stats) return 3; return 1 + Math.log10((a.stats.wins || 0) + (a.stats.losses || 0) + 10) * 1.4; }
+function pickAccount() {
+  const acc = accounts(); if (!acc.length) return null;
+  const pins = new Set(pinsFor());
+  let tot = 0; const w = acc.map((a) => { const v = weightOf(a) * (pins.has(a.id) ? 2.5 : 1); tot += v; return v; });
+  let r = Math.random() * tot;
+  for (let i = 0; i < acc.length; i++) { r -= w[i]; if (r <= 0) return acc[i]; }
+  return acc[acc.length - 1];
+}
+function platsFor(a) {
+  const p = [];
+  if (a.std || a.pump) p.push('pump');
+  if (a.std || a.axiom) p.push('axiom');
+  if (a.std || a.gmgn) p.push('gmgn');
+  return p.length ? p : ['pump', 'axiom', 'gmgn'];
+}
+function simStep(warm) {
+  const a = pickAccount(); if (!a) return;
+  const s = accSim(a), now = Date.now(), r = Math.random();
+  let ev;
+  if (!warm && s.open.length && r < 0.42) {
+    const pos = s.open.splice(Math.floor(Math.random() * s.open.length), 1)[0];
+    const win = Math.random() < (a.stats && (a.stats.wins + a.stats.losses) ? a.stats.wins / (a.stats.wins + a.stats.losses) : 0.45) + 0.05;
+    const pct = win ? 8 + Math.random() * Math.random() * 380 : -(5 + Math.random() * 60);
+    const hold = (now - pos.t) / 1000 * SPEED;
+    const sol = pos.sol * (1 + pct / 100);
+    s.realized += sol - pos.sol; s.holds.push(hold);
+    ev = { type: 'sell', plat: pos.plat, tok: pos.tok, sol, pct, hold, mc: pos.mc * (1 + pct / 100), ca: pos.ca, sim: true };
+  } else if ((a.std || a.x) && r < 0.62) {
+    const held = s.open.length && Math.random() < 0.6 ? pick(s.open) : null;
+    ev = { sim: true, type: 'call', plat: Math.random() < 0.55 && (a.std || a.x) ? 'x' : pick(platsFor(a)), tok: held ? held.tok : pick(TOK) + pick(SUFX), mc: held ? held.mc : 8000 + Math.random() * 400000, holding: !!held, ca: held ? held.ca : fakeCA(Math.random() < 0.7 ? 'pump' : 'x') };
+  } else {
+    const plat = pick(platsFor(a)), tok = pick(TOK) + pick(SUFX), sol = Math.round((0.3 + Math.random() * Math.random() * 30) * 100) / 100, mc = 5000 + Math.random() * Math.random() * 900000;
+    const ca = fakeCA(plat);
+    s.open.push({ tok, sol, mc, plat, t: now, ca }); if (s.open.length > 6) s.open.shift();
+    ev = { type: 'buy', plat, tok, sol, mc, ca, sim: true };
+  }
+  ev.t = now; emit(a, ev, warm);
+}
+const PLAT_LONG = { pump: 'pump.fun', axiom: 'Axiom', gmgn: 'GMGN', x: 'X' };
+const platLong = (ev) => ev.plat === 'dex' ? (ev.src || 'DEX') : PLAT_LONG[ev.plat];
+function emit(a, ev, warm) {
+  const s = accSim(a);
+  ev.id = ev.id || uid(); ev.acc = a.id; ev.name = a.name; ev.x = a.x; s.count++; s.last = Math.max(s.last, ev.t);
+  sim.events.push(ev); sim.events.sort((p, q) => q.t - p.t); if (sim.events.length > 200) sim.events.length = 200;
+  if (ev.type === 'buy' && !warm) { fishParty(ev); notify(`BUY · ${a.name}`, `$${ev.tok} · ${fmt(ev.sol, 2)} SOL on ${platLong(ev)}`); }
+  if (!warm && ev.type === 'call' && pinsFor().includes(a.id)) { notify(`PINNED CALLOUT · ${a.name}`, `called $${ev.tok}`); toast(`PINNED CALLOUT · ${a.name} called $${ev.tok}`, 'on ' + platLong(ev), true); }
+  renderFeed(warm ? null : ev); renderPosts(); renderKpis(); throttledLists();
+}
+let listTimer = null;
+function throttledLists() { if (listTimer) return; listTimer = setTimeout(() => { listTimer = null; renderPins(); renderList(); }, 1500); }
+
+// ---------- fish ----------
+let fishUntil = 0;
+function fishParty(ev) {
+  fishUntil = Date.now() + 6500;
+  const v = $('fish');
+  $('fishWrap').classList.remove('paused');
+  $('fishLabel').className = 'live';
+  $('fishLabel').textContent = `BUY · ${ev.name} · $${ev.tok} · ${fmt(ev.sol, 2)} SOL`.toUpperCase();
+  if (v.paused) { const p = v.play(); if (p && p.catch) p.catch(() => { v.muted = true; v.play().catch(() => {}); }); }
+}
+setInterval(() => {
+  const v = $('fish');
+  if (Date.now() > fishUntil && !v.paused) {
+    v.pause(); $('fishWrap').classList.add('paused');
+    $('fishLabel').className = ''; $('fishLabel').textContent = 'PAUSED · WAITING FOR A BUY';
+  }
+}, 250);
+// volume 0-100: browsers only allow sound after the viewer's first click or key press
+let unlocked = false, lastVol = 50;
+$('fish').addEventListener('ended', () => { const v = $('fish'); v.currentTime = 0; if (Date.now() < fishUntil) v.play().catch(() => {}); });
+function vol() { return typeof state.vol === 'number' ? state.vol : 50; }
+function applyVol() {
+  const v = $('fish'), n = vol();
+  v.volume = n / 100; v.muted = !unlocked || n === 0;
+  $('volume').value = n; $('volOut').textContent = n + '%';
+  const audible = !v.muted;
+  $('waves').style.display = audible ? '' : 'none'; $('muteX').style.display = audible ? 'none' : '';
+  $('muteBtn').setAttribute('aria-label', n === 0 ? 'Unmute fish' : 'Mute fish');
+}
+function unlock() { if (unlocked) return; unlocked = true; applyVol(); }
+window.addEventListener('pointerdown', unlock, { capture: true });
+window.addEventListener('keydown', unlock, { capture: true });
+$('volume').oninput = () => { unlocked = true; state.vol = +$('volume').value; if (state.vol > 0) lastVol = state.vol; applyVol(); persist(); };
+$('muteBtn').onclick = () => { unlocked = true; if (vol() > 0) { lastVol = vol(); state.vol = 0; } else state.vol = lastVol || 50; applyVol(); persist(); };
+
+function moveGauge(b, s) { const mk = document.getElementById('gaugeMk'); if (!mk) return; const tot = b + s || 1; mk.style.top = Math.round(15 + (s / tot) * 70) + '%'; }
+let notifOn = false;
+function notify(title, body) {
+  if (!notifOn || !document.hidden) return;
+  try { const n = new Notification(title, { body, tag: 'fihradar', silent: false }); n.onclick = () => { window.focus(); n.close(); }; } catch (e) { /* not allowed here */ }
+}
+$('notifBtn').onclick = async () => {
+  if (notifOn) { notifOn = false; $('notifBtn').classList.remove('on'); toast('Desktop alerts off'); return; }
+  try {
+    if (!('Notification' in window)) throw new Error('none');
+    const p = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+    if (p !== 'granted') throw new Error(p);
+    notifOn = true; $('notifBtn').classList.add('on'); toast('Desktop alerts on', 'you get a pop-up on buys and pinned callouts while FihRadar is in the background');
+  } catch (e) { toast('Desktop alerts are blocked here', 'they work in the downloaded or self-hosted FihRadar'); }
+};
+function renderKpis() {
+  const acc = accounts(), ids = new Set(acc.map((a) => a.id));
+  let b = 0, s = 0, c = 0, flow = 0;
+  sim.events.forEach((e) => { if (!ids.has(e.acc)) return; if (e.type === 'buy') { b++; flow += e.sol; } else if (e.type === 'sell') { s++; flow -= e.sol; } else c++; });
+  $('kWatch').textContent = acc.length; $('kWatchS').textContent = listName();
+  $('kBuys').textContent = b; $('kSells').textContent = s; $('kCalls').textContent = c; moveGauge(b, s);
+  $('kFlow').textContent = (flow >= 0 ? '+' : '−') + fmt(Math.abs(flow), 1) + ' SOL';
+  $('kFlow').className = 'v ' + (flow >= 0 ? 'pos' : 'neg');
+  const top = acc.filter((a) => a.stats).sort((x, y) => y.stats.pnl30 - x.stats.pnl30)[0];
+  $('kTop').textContent = top ? sgn(top.stats.pnl30) + '◎' : '—';
+  $('kTopS').textContent = top ? (top.name + ' · Kolscan 12 Nov') : 'no Kolscan stats in this list';
+}
+
+// ---------- rendering ----------
+function statsOf(a) {
+  const s = sim.byAcc[a.id], st = a.stats;
+  const wr = st && st.wins + st.losses > 0 ? st.wins / (st.wins + st.losses) * 100 : null;
+  const hold = s && s.holds.length ? s.holds.reduce((x, y) => x + y, 0) / s.holds.length : null;
+  return { wr, hold, act: s ? s.count : 0, sess: s ? s.realized : 0 };
+}
+function renderPins() {
+  const acc = accounts(), byId = Object.fromEntries(acc.map((a) => [a.id, a]));
+  const ids = pinsFor().filter((id) => byId[id]);
+  $('pinSrc').textContent = state.pins[state.active] ? 'your pins' : 'biggest by 30d PnL';
+  renderKpis();
+  $('pins').innerHTML = ids.length ? ids.map((id) => {
+    const a = byId[id], st = statsOf(a);
+    return `<button class="pin" type="button" data-open="${esc(a.id)}" aria-label="Pinned: ${esc(a.name || a.x)}"><svg class="fishmark" viewBox="0 0 44 28" aria-hidden="true"><path fill="currentColor" d="M2 14c6-9 18-12 28-7l8-6-2 10 2 10-8-6C20 20 8 23 2 14zm25-3a2 2 0 1 0 0 .1z"/></svg>${avatar(a)}
+      <div style="min-width:0"><div class="nm">${esc(a.name || '@' + a.x)}</div><div class="hd">${a.x ? '@' + esc(a.x) : 'no X handle'}</div></div>
+      <div class="v"><span class="${a.stats && a.stats.pnl30 < 0 ? 'neg' : 'pos'}" style="font-weight:700">${a.stats ? sgn(a.stats.pnl30) + '◎' : '—'}</span><span>${st.wr == null ? '' : fmt(st.wr) + '% wr'}</span><span title="average hold, simulated">${st.hold == null ? '' : dur(st.hold)}</span></div></button>`;
+  }).join('') : '<div class="empty" style="grid-column:1/-1">No accounts yet. Add one with <b>+ Add account</b>.</div>';
+}
+function renderList() {
+  const q = $('q').value.trim().toLowerCase(), sort = $('sort').value, pins = new Set(pinsFor());
+  let acc = accounts().filter((a) => !q || (a.name || '').toLowerCase().includes(q) || (a.x || '').toLowerCase().includes(q));
+  const key = (a) => { const st = statsOf(a); return sort === 'pnl' ? (a.stats ? a.stats.pnl30 : -1e9) : sort === 'wr' ? (st.wr ?? -1) : sort === 'act' ? st.act : (st.hold ?? -1); };
+  acc = acc.slice().sort((a, b) => key(b) - key(a));
+  $('listTitle').textContent = listName().toUpperCase();
+  $('listCount').textContent = accounts().length + ' accounts';
+  $('kolList').innerHTML = acc.length ? acc.map((a) => {
+    const st = statsOf(a), on = pins.has(a.id);
+    return `<div class="row ${on ? 'pinrow' : ''}" role="button" tabindex="0" data-open="${esc(a.id)}">
+      <button class="star ${on ? 'on' : ''}" type="button" data-pin="${esc(a.id)}" aria-label="${on ? 'Unpin' : 'Pin'} ${esc(a.name || a.x)}" aria-pressed="${on}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></button>
+      ${avatar(a)}
+      <div style="min-width:0"><div class="nm">${esc(a.name || '@' + a.x)}${a.stats ? `<span class="tier">T${a.stats.tier}</span>` : a.std === false && state.active === 'std' ? '<span class="tier">ADDED</span>' : ''}</div>
+        <div class="hd">${a.x ? '@' + esc(a.x) : ''}${st.act ? ` · ${st.act} moves` : ''}</div></div>
+      <div style="text-align:right"><div class="${a.stats && a.stats.pnl30 < 0 ? 'neg' : 'pos'}" style="font-weight:700">${a.stats ? sgn(a.stats.pnl30) : '—'}</div><div class="hd">${st.wr == null ? '' : fmt(st.wr) + '% wr'}</div></div></div>`;
+  }).join('') : '<div class="empty">Nothing here yet.</div>';
+}
+function evHtml(ev, fresh) {
+  const a = { name: ev.name, x: ev.x };
+  const pinned = pinsFor().includes(ev.acc);
+  const who = `<b>${esc(ev.name || '@' + ev.x)}</b>${ev.x ? ` <span class="hd">@${esc(ev.x)}</span>` : ''}`;
+  const platName = ev.plat === 'dex' ? (ev.src || 'DEX').toUpperCase() : { pump: 'PUMP', axiom: 'AXIOM', gmgn: 'GMGN', x: 'X' }[ev.plat];
+  const mcTxt = ev.mc ? ` at $${fmt(ev.mc / 1000, 1)}k mc` : '';
+  let act, l2, amt;
+  if (ev.type === 'buy') { act = '<span class="act buy">BUY</span>'; l2 = `bought <b>$${esc(ev.tok)}</b>${mcTxt}${ev.sig ? ` · <a href="https://solscan.io/tx/${esc(ev.sig)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">tx</a>` : ''} · <span class="copyhint">click to copy CA</span>`; amt = `<span class="pos">${fmt(ev.sol, 2)} SOL</span><small>${ago(ev.t)}</small>`; }
+  else if (ev.type === 'sell') { act = '<span class="act sell">SELL</span>'; l2 = `sold <b>$${esc(ev.tok)}</b> · ${ev.hold != null ? 'held ' + dur(ev.hold) : 'bought before FihRadar opened'}${ev.sig ? ` · <a href="https://solscan.io/tx/${esc(ev.sig)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">tx</a>` : ''} · <span class="copyhint">click to copy CA</span>`; amt = `${ev.pct != null ? `<span class="${ev.pct >= 0 ? 'pos' : 'neg'}">${sgn(ev.pct, 0)}%</span>` : '<span class="neg">SOLD</span>'}<small>${fmt(ev.sol, 2)} SOL · ${ago(ev.t)}</small>`; }
+  else { act = '<span class="act call">CALLOUT</span>'; l2 = `called <b>$${esc(ev.tok)}</b> on ${platLong(ev)}${mcTxt}${ev.holding ? ' · already holding' : ''} · <span class="copyhint">click to copy CA</span>`; amt = `<small>${ago(ev.t)}</small>`; }
+  const gold = ev.type === 'call' && pinned;
+  const tag = pinned ? '<span class="goldtag">PINNED</span>' : '';
+  const inner = `${avatar(a)}
+    <div style="min-width:0"><div class="l1">${act}<span class="plat ${ev.plat}">${platName}</span>${who}${tag}${ev.sim ? '<span class="sim">SIM</span>' : ''}</div><div class="l2">${l2}</div></div>
+    <div class="amt">${amt}</div>`;
+  const cls = `ev ${fresh && ev.type === 'buy' ? 'newbuy' : ''} ${gold ? 'goldcall' : ''}`;
+  return ev.ca
+    ? `<button type="button" class="${cls}" data-copy="${esc(ev.ca)}" data-tok="${esc(ev.tok)}" aria-label="Copy contract address of ${esc(ev.tok)}">${inner}</button>`
+    : `<div class="${cls}">${inner}</div>`;
+}
+let toastTimer = null;
+function toast(text, sub, gold) {
+  const t = $('toast');
+  t.className = 'toast on' + (gold ? ' gold' : '');
+  t.innerHTML = esc(text) + (sub ? `<small>${esc(sub)}</small>` : '');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.className = 'toast' + (gold ? ' gold' : '')), gold ? 3200 : 2400);
+}
+async function copyCA(ca, tok) {
+  let ok = false;
+  try { await navigator.clipboard.writeText(ca); ok = true; } catch (e) {
+    try { const ta = document.createElement('textarea'); ta.value = ca; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove(); } catch (e2) { ok = false; }
+  }
+  const isW = / wallet$/.test(tok);
+  toast(ok ? (isW ? `Copied ${tok} address` : `Copied $${tok} contract address`) : `Couldn't copy, select it: ${tok}`, ca + (isW ? ' · real wallet' : LIVE.on ? ' · real token' : ' · simulated'));
+}
+const visible = (ev) => (sim.filter === 'all' || sim.filter === ev.type) && sim.plats[ev.plat] && accounts().some((a) => a.id === ev.acc);
+function renderFeed(fresh) {
+  const evs = sim.events.filter(visible).slice(0, 80);
+  $('evCount').textContent = sim.events.length + ' events · click any row to copy its CA';
+  $('feed').innerHTML = evs.length ? evs.map((e) => evHtml(e, fresh && e === fresh)).join('') : `<div class="empty">${sim.events.length ? 'Nothing matches these filters.' : feedNote}</div>`;
+}
+function renderPosts() {
+  const pins = pinsFor(), ids = new Set(accounts().map((a) => a.id));
+  const calls = sim.events.filter((e) => e.type === 'call' && ids.has(e.acc));
+  const latest = {}; calls.forEach((e) => { if (!latest[e.acc]) latest[e.acc] = e; });
+  const order = Object.values(latest).sort((a, b) => (pins.indexOf(b.acc) >= 0) - (pins.indexOf(a.acc) >= 0) || b.t - a.t).slice(0, 14);
+  $('posts').innerHTML = order.length ? order.map((e) => `<div class="post ${pins.includes(e.acc) ? 'gold' : ''}">${avatar(e)}
+    <div style="min-width:0">${pins.includes(e.acc) ? '<div class="goldtag" style="margin-bottom:3px">PINNED</div>' : ''}
+      <div><b>${esc(e.name || '@' + e.x)}</b> <span class="sim">SIM</span></div>
+      <div class="hd" style="white-space:normal">posted a callout for <button type="button" class="chip" style="height:26px;padding:0 8px;font-size:13px;color:var(--call)" data-copy="${esc(e.ca)}" data-tok="${esc(e.tok)}" aria-label="Copy contract address of ${esc(e.tok)}">$${esc(e.tok)} · copy CA</button> · $${fmt(e.mc / 1000, 1)}k mc · ${ago(e.t)}</div>
+      ${e.x ? `<a href="https://x.com/${encodeURIComponent(e.x)}" target="_blank" rel="noopener">Open @${esc(e.x)} on X</a>` : ''}</div></div>`).join('')
+    : LIVE.on ? `<div class="empty" style="white-space:normal">X posts need the paid X API and I'm poor to be doing ts. Your pinned KOLs on X:<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;justify-content:center">${pins.map((id) => accounts().find((a) => a.id === id)).filter((a) => a && a.x).map((a) => `<a class="btn" href="https://x.com/${encodeURIComponent(a.x)}" target="_blank" rel="noopener">@${esc(a.x)}</a>`).join('')}</div></div>` : '<div class="empty">No callouts yet.</div>';
+}
+function renderExcluded() {
+  $('excluded').innerHTML = EXCLUDED.map((e) => `<div style="padding:8px 0;border-bottom:1px solid var(--line2)"><b>${esc(e.name)}</b>${e.x ? ` <span class="hd">@${esc(e.x)}</span>` : ''}<div class="hd" style="white-space:normal">${esc(e.why)} · ${esc(e.when)}</div></div>`).join('')
+    + '<div class="src">Also left out on performance alone, no scandal implied: slingoor, Cooker, Cented, theo, Casino.</div>'
+    + `<div class="src" style="margin-top:6px">Removed as inactive (no trades on Kolscan in the last 30 days, checked 12 Nov 2026): ${DATA.removed.map((r) => esc(r.name)).join(', ')}.</div>`;
+}
+function renderSelect() {
+  const sel = $('listSel');
+  sel.innerHTML = `<option value="std">Trusted 92 (standard)</option>` + state.lists.map((l) => `<option value="${esc(l.id)}">${esc(l.name)} · ${l.accounts.length}</option>`).join('');
+  sel.value = state.active;
+}
+function renderAll() { renderSelect(); renderPins(); renderList(); renderFeed(); renderPosts(); }
+
+// ---------- KOL detail ----------
+let openId = null;
+function openKol(id) {
+  const a = accounts().find((x) => x.id === id); if (!a) return;
+  openId = id;
+  const st = statsOf(a), s = sim.byAcc[a.id], mine = sim.events.filter((e) => e.acc === a.id).slice(0, 6);
+  $('kolTitle').textContent = a.name || '@' + a.x;
+  $('kolSub').textContent = a.stats ? `Rank #${a.stats.rank} · Tier ${a.stats.tier} in the standard list` : 'Added by you';
+  const links = [];
+  if (a.x) links.push(`<a class="btn" href="https://x.com/${encodeURIComponent(a.x)}" target="_blank" rel="noopener">X @${esc(a.x)}</a>`);
+  if (a.pump) links.push(`<a class="btn" href="https://pump.fun/profile/${encodeURIComponent(a.pump)}" target="_blank" rel="noopener">pump.fun</a>`);
+  const gw = a.gmgn || a.wallet;
+  if (gw) links.push(`<a class="btn" href="https://gmgn.ai/sol/address/${encodeURIComponent(gw)}" target="_blank" rel="noopener">GMGN</a>`);
+  if (a.wallet) links.push(`<a class="btn" href="https://solscan.io/account/${encodeURIComponent(a.wallet)}" target="_blank" rel="noopener">Solscan</a>`);
+  if (a.axiom) links.push(`<a class="btn" href="https://solscan.io/account/${encodeURIComponent(a.axiom)}" target="_blank" rel="noopener">Axiom wallet ↗ Solscan</a>`);
+  if (a.wallet) links.push(`<a class="btn" href="https://kolscan.io/account/${encodeURIComponent(a.wallet)}" target="_blank" rel="noopener">Kolscan</a>`);
+  if (a.wallet) links.push(`<button class="btn" type="button" data-copy="${esc(a.wallet)}" data-tok="${esc(a.name)} wallet">Copy wallet</button>`);
+  const ex = excludedFor(a.x);
+  $('kolBody').innerHTML = `${ex ? `<div class="warn">Flagged in the research doc: ${esc(ex.why)} (${esc(ex.when)}).</div>` : ''}
+    <div class="statgrid">
+      <div class="stat"><span>30d PnL</span><b class="${a.stats && a.stats.pnl30 < 0 ? 'neg' : 'pos'}">${a.stats ? sgn(a.stats.pnl30) + ' SOL' : '—'}</b></div>
+      <div class="stat"><span>7d PnL</span><b>${a.stats && a.stats.pnl7 != null ? sgn(a.stats.pnl7) + ' SOL' : '—'}</b></div>
+      <div class="stat"><span>30d wins / losses</span><b>${a.stats && a.stats.wins != null ? fmt(a.stats.wins) + ' / ' + fmt(a.stats.losses) : '—'}</b></div>
+      <div class="stat"><span>win rate</span><b>${st.wr == null ? '—' : fmt(st.wr) + '%'}</b></div>
+      <div class="stat"><span>avg hold${LIVE.on ? ' (this session)' : ' <span class="sim">SIM</span>'}</span><b>${st.hold == null ? '—' : dur(st.hold)}</b></div>
+      <div class="stat"><span>session PnL${LIVE.on ? '' : ' <span class="sim">SIM</span>'}</span><b class="${st.sess < 0 ? 'neg' : 'pos'}">${s ? sgn(st.sess, 2) + ' SOL' : '—'}</b></div>
+    </div>
+    ${a.stats ? '<div class="src">30d / 7d PnL and wins/losses: Kolscan, as of 12 Nov 2026 (research doc). Avg hold and session PnL come from the simulated feed.</div>' : ''}
+    <div class="links">${links.join('') || '<span class="hd">No platform links.</span>'}</div>
+    <div><div class="hd" style="margin-bottom:6px">Recent activity</div>${mine.length ? mine.map((e) => evHtml(e, false)).join('') : '<div class="hd">Nothing yet.</div>'}</div>`;
+  $('kolPin').textContent = pinsFor().includes(id) ? 'Unpin' : 'Pin';
+  $('kolRemove').hidden = !!a.std;
+  $('dlgKol').showModal();
+}
+$('kolClose').onclick = () => $('dlgKol').close();
+$('kolPin').onclick = () => { togglePin(openId); $('kolPin').textContent = pinsFor().includes(openId) ? 'Unpin' : 'Pin'; };
+$('kolRemove').onclick = () => {
+  const l = activeList();
+  if (l) l.accounts = l.accounts.filter((a) => a.id !== openId); else state.stdExtra = state.stdExtra.filter((a) => a.id !== openId);
+  persist(); $('dlgKol').close(); renderAll();
+};
+
+// ---------- dialogs ----------
+function openStart() { if (!$('dlgStart').open) $('dlgStart').showModal(); }
+$('pickStd').onclick = () => { state.onboarded = true; state.active = 'std'; persist(); $('dlgStart').close(); renderAll(); };
+$('pickOwn').onclick = () => { state.onboarded = true; persist(); $('dlgStart').close(); openNewList(); };
+function openNewList() { $('listName').value = ''; $('listErr').textContent = ''; $('dlgList').showModal(); $('listName').focus(); }
+$('newListBtn').onclick = openNewList;
+$('listCancel').onclick = () => $('dlgList').close();
+$('listForm').onsubmit = (e) => {
+  e.preventDefault();
+  const name = $('listName').value.trim();
+  if (!name) { $('listErr').textContent = 'Give the list a name.'; return; }
+  if (state.lists.length >= 20) { $('listErr').textContent = 'You can have up to 20 lists.'; return; }
+  const l = { id: 'l' + uid(), name, accounts: [] };
+  state.lists.push(l); state.active = l.id; persist(); $('dlgList').close(); renderAll(); openAdd();
+};
+function openAdd() {
+  $('aList').innerHTML = `<option value="std">Trusted 92 (standard)</option>` + state.lists.map((l) => `<option value="${esc(l.id)}">${esc(l.name)}</option>`).join('');
+  $('aList').value = state.active;
+  ['aName', 'aX', 'aPump', 'aAxiom', 'aGmgn'].forEach((k) => ($(k).value = ''));
+  $('addErr').textContent = ''; $('addWarn').hidden = true;
+  $('dlgAdd').showModal(); $('aName').focus();
+}
+$('addBtn').onclick = openAdd;
+$('addCancel').onclick = () => $('dlgAdd').close();
+$('aX').oninput = () => {
+  const ex = excludedFor(cleanHandle($('aX').value));
+  $('addWarn').hidden = !ex;
+  if (ex) $('addWarn').textContent = `Heads up: @${ex.x} was left out of the standard list. ${ex.why} (${ex.when}). You can still add them.`;
+};
+$('addForm').onsubmit = (e) => {
+  e.preventDefault();
+  const acc = { id: 'u' + uid(), name: $('aName').value.trim().slice(0, 40), x: cleanHandle($('aX').value), pump: cleanId($('aPump').value), axiom: cleanId($('aAxiom').value), gmgn: cleanId($('aGmgn').value), std: false };
+  if (!acc.x && !acc.pump && !acc.axiom && !acc.gmgn) { $('addErr').textContent = 'Add at least one: X handle, pump.fun, Axiom or GMGN.'; return; }
+  if (!acc.name) acc.name = acc.x ? acc.x : (acc.pump || acc.gmgn || acc.axiom).slice(0, 6) + '…';
+  const target = $('aList').value;
+  const pool = target === 'std' ? STANDARD.concat(state.stdExtra) : (state.lists.find((l) => l.id === target) || { accounts: [] }).accounts;
+  if (acc.x && pool.some((a) => (a.x || '').toLowerCase() === acc.x.toLowerCase())) { $('addErr').textContent = `@${acc.x} is already in that list.`; return; }
+  if (pool.length >= 300) { $('addErr').textContent = 'That list is full (300 accounts).'; return; }
+  // carry real stats over when the handle is in the standard list
+  const known = acc.x && STANDARD.find((s) => s.x.toLowerCase() === acc.x.toLowerCase());
+  if (known) { acc.stats = known.stats; acc.wallet = known.wallet; if (!$('aName').value.trim()) acc.name = known.name; }
+  if (target === 'std') state.stdExtra.push(acc); else state.lists.find((l) => l.id === target).accounts.push(acc);
+  state.active = target; persist(); $('dlgAdd').close(); renderAll();
+};
+$('srcBtn').onclick = () => $('dlgSrc').showModal();
+$('exBtn').onclick = () => $('dlgEx').showModal();
+$('exClose').onclick = () => $('dlgEx').close();
+$('srcClose').onclick = () => $('dlgSrc').close();
+$('listSel').onchange = () => { state.active = $('listSel').value; persist(); renderAll(); };
+$('q').oninput = renderList; $('sort').onchange = renderList;
+document.querySelectorAll('[data-f]').forEach((b) => (b.onclick = () => { sim.filter = b.dataset.f; document.querySelectorAll('[data-f]').forEach((x) => x.classList.toggle('on', x === b)); renderFeed(); }));
+document.querySelectorAll('[data-p]').forEach((b) => (b.onclick = () => { sim.plats[b.dataset.p] = !sim.plats[b.dataset.p]; b.classList.toggle('on', sim.plats[b.dataset.p]); renderFeed(); }));
+document.addEventListener('click', (e) => {
+  const cp = e.target.closest('[data-copy]'); if (cp && !cp.closest('dialog')) { copyCA(cp.dataset.copy, cp.dataset.tok); return; }
+  if (cp) { copyCA(cp.dataset.copy, cp.dataset.tok); return; }
+  const pin = e.target.closest('[data-pin]'); if (pin) { e.stopPropagation(); togglePin(pin.dataset.pin); return; }
+  const op = e.target.closest('[data-open]'); if (op) openKol(op.dataset.open);
+});
+document.addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('row')) { e.preventDefault(); openKol(e.target.dataset.open); }
+});
+
+
+// ---------- live: real on-chain buys/sells through the viewer's own free Helius key ----------
+const LIVE = { gen: 0, polled: new Set(), ok: 0, on: false, key: '', ws: null, subs: {}, byAddr: {}, seen: new Set(), pos: {}, syms: {}, q: [], busy: 0, retry: 0, tx: 0, stop: false };
+const WSOL = 'So11111111111111111111111111111111111111112';
+const QUOTES = new Set([WSOL, 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 'Es9vMFrzaCERmJfrF4H2FYD4KConky11McCe8BenwNYB']);
+const PROGS = { '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P': ['pump', 'pump.fun'], 'pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA': ['pump', 'PumpSwap'],
+  'LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj': ['dex', 'LaunchLab'], 'CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C': ['dex', 'Raydium'], '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8': ['dex', 'Raydium'],
+  'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK': ['dex', 'Raydium'], 'dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN': ['dex', 'Meteora'], 'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo': ['dex', 'Meteora'],
+  'cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG': ['dex', 'Meteora'], 'Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB': ['dex', 'Meteora'], 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc': ['dex', 'Orca'],
+  'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4': ['dex', 'Jupiter'] };
+const isAddr = (v) => typeof v === 'string' && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(v);
+const rpcUrl = () => LIVE.key ? 'https://mainnet.helius-rpc.com/?api-key=' + encodeURIComponent(LIVE.key) : 'https://solana-rpc.publicnode.com';
+const wsUrl = () => LIVE.key ? 'wss://mainnet.helius-rpc.com/?api-key=' + encodeURIComponent(LIVE.key) : 'wss://solana-rpc.publicnode.com';
+const srcName = () => LIVE.key ? 'your Helius key' : 'free public Solana node';
+function liveStatus(t) { $('liveStatus').textContent = t; }
+function liveBadge() {
+  const b = $('liveBtn');
+  b.className = 'demo' + (LIVE.on ? ' live' : '') + (b.classList.contains('cut') ? ' cut ' + [...b.classList].find((c) => c.startsWith('k-')) : '');
+  b.textContent = LIVE.on ? 'LIVE · ON-CHAIN' : 'CONNECTING…';
+  
+}
+async function rpc(method, params) {
+  const r = await fetch(rpcUrl(), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });
+  if (r.status === 401 || r.status === 403) throw new Error('key');
+  if (r.status === 429) { await new Promise((ok) => setTimeout(ok, 1500)); return rpc(method, params); }
+  const j = await r.json(); if (j.error) throw new Error(j.error.message || 'rpc'); return j.result;
+}
+// every account in every list that has a wallet address
+function watchMap() {
+  const m = {};
+  STANDARD.concat(state.stdExtra, ...state.lists.map((l) => l.accounts)).forEach((a) => [a.wallet, a.axiom, a.gmgn, a.pump].forEach((w) => { if (isAddr(w) && !m[w]) m[w] = a; }));
+  return m;
+}
+async function tokenInfo(mint) {
+  const c = LIVE.syms[mint];
+  if (c && Date.now() - c.at < 60000) return c;
+  const short = mint.slice(0, 4) + '…' + mint.slice(-4);
+  let info = { sym: c ? c.sym : short, mc: null, at: Date.now() };
+  try {
+    const r = await fetch('https://api.dexscreener.com/latest/dex/tokens/' + mint);
+    const j = await r.json();
+    const p = (j.pairs || []).filter((x) => x.baseToken && x.baseToken.address === mint).sort((x, y) => ((y.liquidity || {}).usd || 0) - ((x.liquidity || {}).usd || 0))[0];
+    if (p) info = { sym: (p.baseToken.symbol || short).replace(/^\$/, '').slice(0, 16), mc: p.marketCap || p.fdv || null, at: Date.now() };
+  } catch (e) { /* name stays the short address */ }
+  LIVE.syms[mint] = info; return info;
+}
+// read one transaction and turn it into a buy or sell for the watched wallet
+async function parseTx(sig, addr) {
+  let tx = null;
+  for (let i = 0; i < 4 && !tx; i++) { tx = await rpc('getTransaction', [sig, { encoding: 'jsonParsed', maxSupportedTransactionVersion: 1, commitment: 'confirmed' }]); if (!tx) await new Promise((ok) => setTimeout(ok, 1500)); }
+  if (!tx || !tx.meta || tx.meta.err) return null;
+  const keys = tx.transaction.message.accountKeys.map((k) => (typeof k === 'string' ? k : k.pubkey));
+  const i = keys.indexOf(addr);
+  let sol = i >= 0 ? (tx.meta.postBalances[i] - tx.meta.preBalances[i]) / 1e9 : 0;
+  const d = {};
+  const add = (b, sign) => { if (b.owner !== addr) return; d[b.mint] = (d[b.mint] || 0) + sign * (b.uiTokenAmount.uiAmount || 0); };
+  (tx.meta.preTokenBalances || []).forEach((b) => add(b, -1));
+  (tx.meta.postTokenBalances || []).forEach((b) => add(b, 1));
+  if (d[WSOL]) sol += d[WSOL];
+  let mint = null, amt = 0;
+  Object.entries(d).forEach(([m, v]) => { if (!QUOTES.has(m) && Math.abs(v) > Math.abs(amt)) { mint = m; amt = v; } });
+  if (!mint || Math.abs(sol) < 0.005) return null;
+  let type = null;
+  if (amt > 0 && sol < 0) type = 'buy'; else if (amt < 0 && sol > 0) type = 'sell'; else return null;
+  let plat = 'dex', src = 'DEX';
+  for (const k of keys) if (PROGS[k]) { [plat, src] = PROGS[k]; if (plat === 'pump') break; }
+  return { type, mint, amt: Math.abs(amt), sol: Math.abs(sol), plat, src, t: (tx.blockTime ? tx.blockTime * 1000 : Date.now()) };
+}
+async function handleSig(sig, addr, warm) {
+    const a = LIVE.byAddr[addr]; if (!a) return;
+  let r;
+  try { r = await parseTx(sig, addr); } catch (e) { if (e.message === 'key') keyRefused(); return; }
+  if (!r || !LIVE.on) return;
+  LIVE.tx++;
+  const ti = await tokenInfo(r.mint), tok = ti.sym;
+  const pk = a.id + '|' + r.mint, s = accSim(a);
+  const ev = { type: r.type, plat: r.plat, src: r.src, tok, sol: r.sol, ca: r.mint, sig, t: r.t, id: sig, mc: ti.mc };
+  if (r.type === 'buy') {
+    const p = LIVE.pos[pk] || (LIVE.pos[pk] = { t: r.t, amt: 0, cost: 0 });
+    p.amt += r.amt; p.cost += r.sol;
+  } else {
+    const p = LIVE.pos[pk];
+    if (p && p.amt > 0) {
+      const frac = Math.min(1, r.amt / p.amt), cost = p.cost * frac;
+      ev.pct = (r.sol / cost - 1) * 100; ev.hold = (r.t - p.t) / 1000;
+      s.holds.push(ev.hold); s.realized += r.sol - cost;
+      p.amt -= r.amt; p.cost -= cost; if (p.amt <= 1e-9) delete LIVE.pos[pk];
+    }
+  }
+  emit(a, ev, warm || Date.now() - r.t > 180000);
+}
+// small queue so the free plan's rate limit is never hit
+function enqueue(sig, addr, warm) { if (LIVE.seen.has(sig)) return; LIVE.seen.add(sig); LIVE.q.push([sig, addr, warm]); pump(); }
+function pump() {
+  while (LIVE.busy < 3 && LIVE.q.length) {
+    const job = LIVE.q.shift(); LIVE.busy++;
+    handleSig(...job).catch(() => {}).finally(() => { setTimeout(() => { LIVE.busy--; pump(); }, 120); });
+  }
+}
+function keyRefused() {
+  if (!LIVE.key) return;
+  LIVE.key = ''; try { localStorage.removeItem('fihradar:helius'); } catch (e) {}
+  toast('Helius key refused', 'switched back to the free public node'); restartSocket();
+}
+// poll every wallet in turn (the public node doesn't stream reliably); first look = recent history
+function startPoller() {
+  const addrs = Object.keys(LIVE.byAddr); let i = 0;
+  const gen = ++LIVE.gen;
+  const tick = async () => {
+    if (!LIVE.on || gen !== LIVE.gen) return;
+    if (LIVE.q.length < 40) {
+      const addr = addrs[i++ % addrs.length], first = !LIVE.polled.has(addr);
+      try {
+        const sigs = await rpc('getSignaturesForAddress', [addr, { limit: 10 }]);
+        LIVE.polled.add(addr); LIVE.ok = Date.now();
+        // first look: show the 4 most recent as history, remember the rest so they never pop up as new
+        if (first) sigs.slice(4).forEach((x) => LIVE.seen.add(x.signature));
+        sigs.slice(0, first ? 4 : 10).filter((x) => !x.err).reverse().forEach((x) => enqueue(x.signature, addr, first));
+      } catch (e) { if (e.message === 'key') keyRefused(); }
+    }
+    setTimeout(tick, LIVE.key ? 150 : 260);
+  };
+  tick();
+}
+function showStatus() {
+  const n = Object.keys(LIVE.byAddr).length, done = LIVE.polled.size;
+  liveStatus(`LIVE via ${srcName()}.\nWatching ${n} wallets${done < n ? ` (first scan ${done}/${n})` : ''}. Trades read: ${LIVE.tx}.\nLast contact: ${LIVE.ok ? ago(LIVE.ok) : '—'}`);
+}
+function restartSocket() { try { LIVE.ws && LIVE.ws.close(); } catch (e) {} if (LIVE.on) openSocket(); }
+function openSocket() {
+  const ws = new WebSocket(wsUrl());
+  LIVE.ws = ws; LIVE.subs = {};
+  const addrs = Object.keys(LIVE.byAddr);
+  ws.onopen = () => {
+    LIVE.retry = 0;
+    addrs.forEach((addr, n) => ws.send(JSON.stringify({ jsonrpc: '2.0', id: n + 1, method: 'logsSubscribe', params: [{ mentions: [addr] }, { commitment: 'confirmed' }] })));
+    showStatus();
+  };
+  ws.onmessage = (m) => {
+    let j; try { j = JSON.parse(m.data); } catch (e) { return; }
+    if (j.id && typeof j.result === 'number') { LIVE.subs[j.result] = addrs[j.id - 1]; return; }
+    if (j.method === 'logsNotification') {
+      const v = j.params.result.value, addr = LIVE.subs[j.params.subscription];
+      if (addr && !v.err) enqueue(v.signature, addr, false);
+      showStatus();
+    }
+  };
+  ws.onclose = () => {
+    if (!LIVE.on || LIVE.stop || LIVE.ws !== ws) return;
+    const wait = Math.min(30000, 1000 * 2 ** LIVE.retry++);
+    liveStatus(`Connection dropped, reconnecting in ${Math.round(wait / 1000)}s…`);
+    setTimeout(() => { if (LIVE.on && !LIVE.stop) openSocket(); }, wait);
+  };
+}
+async function goLive(key) {
+  LIVE.key = (key || '').trim(); LIVE.stop = false;
+  setFeedNote('Connecting to Solana…');
+  try { await rpc('getSlot', []); }
+  catch (e) {
+    if (e.message === 'key' && LIVE.key) { LIVE.key = ''; try { localStorage.removeItem('fihradar:helius'); } catch (x) {} toast('Helius key refused', 'using the free public node'); return goLive(''); }
+    liveStatus('Couldn\'t reach Solana from this page.\nOpen the downloaded FihRadar.html instead: this preview blocks outside connections.');
+    setFeedNote('Can\'t reach Solana from this page. Open the downloaded <b>FihRadar.html</b> to see live trades. Retrying every 20s…');
+    setTimeout(() => { if (!LIVE.on) goLive(LIVE.key); }, 20000);
+    return;
+  }
+  try { if (LIVE.key) localStorage.setItem('fihradar:helius', LIVE.key); } catch (e) { /* not saved */ }
+  LIVE.on = true; LIVE.byAddr = watchMap(); LIVE.polled = new Set(); LIVE.q.length = 0;
+  setFeedNote('Live. Reading the last trades of every wallet…');
+  liveBadge(); renderAll(); showStatus();
+  openSocket(); startPoller();
+  setInterval(showStatus, 3000);
+}
+let feedNote = 'Connecting to Solana…';
+function setFeedNote(t) { feedNote = t; if (!sim.events.length) renderFeed(); }
+$('liveBtn').onclick = () => { $('liveKey').value = LIVE.key; $('dlgLive').showModal(); };
+$('liveClose').onclick = () => $('dlgLive').close();
+$('liveGo').onclick = () => { const k = $('liveKey').value.trim(); LIVE.key = k; try { k ? localStorage.setItem('fihradar:helius', k) : localStorage.removeItem('fihradar:helius'); } catch (e) {} if (LIVE.on) { LIVE.byAddr = watchMap(); restartSocket(); startPoller(); showStatus(); toast(k ? 'Using your Helius key' : 'Using the free public node'); } else goLive(k); };
+$('liveOff').onclick = () => { $('liveKey').value = ''; $('liveGo').onclick(); };
+
+// ---------- cut corners ----------
+const CUTS = ['k-tl', 'k-tr', 'k-br', 'k-bl'];
+// each element's cut corner comes from a hash of what it is (its id, data key or label),
+// so it lands in the same spot every render and every visit
+function cutKey(el) {
+  const d = el.dataset || {};
+  const k = el.id || d.open || d.pin || d.f || d.p || d.copy || el.getAttribute('aria-label');
+  if (k) return el.tagName + '|' + k;
+  // otherwise: its position in the page (child indexes up to the nearest id), which never changes
+  const path = [];
+  let n = el;
+  while (n && n !== document.body && !n.id) { const p = n.parentElement; if (!p) break; path.push([...p.children].indexOf(n)); n = p; }
+  return el.tagName + '|' + (n && n.id ? n.id : 'body') + '|' + path.join('.');
+}
+function cutFor(key) { let h = 2166136261; for (const c of key) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0; return CUTS[h % 4]; }
+function applyCuts(root) {
+  root.querySelectorAll('.panel,.kpi,.btn,.chip,.pin,select,dialog,.vol button,.stat,.choice button').forEach((el) => {
+    if (el.classList.contains('cut')) return;
+    el.classList.add('cut', cutFor(cutKey(el)));
+  });
+}
+new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => { if (n.nodeType === 1) applyCuts(n.parentNode || document); }))).observe(document.body, { childList: true, subtree: true });
+applyCuts(document);
+
+// ---------- go ----------
+renderExcluded(); renderAll(); applyVol();
+initStore().then(() => { renderAll(); if (!state.onboarded) openStart(); });
+setTimeout(() => { if (!state.onboarded && !$('dlgStart').open) openStart(); }, 3000);
+let savedKey = ''; try { savedKey = localStorage.getItem('fihradar:helius') || ''; } catch (e) { /* no storage */ }
+document.body.classList.add('islive'); fishUntil = 0;
+goLive(savedKey);
+setInterval(() => { renderFeed(); renderPosts(); }, 15000);
+</script>
+</body>
+</html>
