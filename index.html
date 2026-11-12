@@ -747,6 +747,7 @@ $('addForm').onsubmit = (e) => {
   if (known) { acc.stats = known.stats; acc.wallet = known.wallet; if (!$('aName').value.trim()) acc.name = known.name; }
   if (target === 'std') state.stdExtra.push(acc); else state.lists.find((l) => l.id === target).accounts.push(acc);
   state.active = target; persist(); $('dlgAdd').close(); renderAll();
+  if (LIVE.on) { LIVE.byAddr = watchMap(); restartSocket(); startPoller(); }
 };
 $('srcBtn').onclick = () => $('dlgSrc').showModal();
 $('exBtn').onclick = () => $('dlgEx').showModal();
